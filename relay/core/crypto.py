@@ -1,0 +1,100 @@
+"""
+Crypto modülü - Şifreleme/şifre çözme fonksiyonları
+C++ Matryoshka kütüphanesini kullanır, yoksa fallback mod kullanır.
+"""
+
+import base64
+import json
+from typing import Tuple, Union
+from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey
+
+# C++ wrapper'ı import et (opsiyonel)
+try:
+    from core.cpp_wrapper import get_wrapper, is_available
+    CPP_AVAILABLE = is_available()
+except (ImportError, FileNotFoundError, OSError):
+    CPP_AVAILABLE = False
+
+
+def decrypt_layer(encrypted_data: bytes, private_key: Union[RSAPrivateKey, str]) -> Tuple[str, bytes]:
+    """
+    Şifreli paketin bir katmanını çözer (Matryoshka Protocol v1.0 uyumlu).
+    
+    C++ kütüphanesi mevcutsa onu kullanır, yoksa test moduna geçer.
+    
+    Protokol Spesifikasyonu:
+    - Giriş formatı: JSON string {"cipher": {"enc_key": "...", "enc_iv": "...", "enc_payload": "..."}}
+    - Çıkış formatı: {"next_hop": "IP:PORT", "remaining_payload_b64": "..."}
+    
+    Şifreleme:
+    - Asymmetric: RSA-2048 with OAEP Padding (session key'ler için)
+    - Symmetric: AES-256 CBC Mode (payload için)
+    
+    Args:
+        encrypted_data: Şifreli paket verisi (bytes) - JSON string formatında olmalı
+        private_key: Özel anahtar - RSAPrivateKey objesi veya PEM formatında string
+    
+    Returns:
+        (next_hop, remaining_data) tuple'ı
+        - next_hop: "IP:PORT" formatında string (bir sonraki hop adresi)
+        - remaining_data: Hala şifreli bytes verisi (bir sonraki relay için)
+    
+    Raises:
+        ValueError: Geçersiz giriş veya bellek hatası (C++ hata kodu -1, -2)
+        RuntimeError: Kripto hatası - yanlış özel anahtar veya bozuk veri (C++ hata kodu -3)
+        json.JSONDecodeError: Parse hatası - çözülmüş veri geçerli JSON değil (C++ hata kodu -4)
+    """
+    # C++ kütüphanesi mevcutsa kullan
+    if CPP_AVAILABLE:
+        try:
+            # Özel anahtarı string formatına çevir (gerekirse)
+            if isinstance(private_key, str):
+                priv_key_str = private_key
+            else:
+                # RSAPrivateKey objesinden PEM string'e çevir
+                from cryptography.hazmat.primitives import serialization
+                priv_key_str = private_key.private_bytes(
+                    encoding=serialization.Encoding.PEM,
+                    format=serialization.PrivateFormat.PKCS8,
+                    encryption_algorithm=serialization.NoEncryption()
+                ).decode('utf-8')
+            
+            # Paketi string formatına çevir (C++ kütüphanesi JSON string bekliyor)
+            packet_str = encrypted_data.decode('utf-8')
+            
+            # C++ wrapper kullanarak şifre çöz
+            wrapper = get_wrapper()
+            result = wrapper.decrypt_layer(packet_str, priv_key_str)
+            
+            # Protokol spesifikasyonuna göre: {"next_hop": "...", "remaining_payload_b64": "..."}
+            next_hop = result.get('next_hop', '')
+            remaining_payload_b64 = result.get('remaining_payload_b64', '')
+            
+            # remaining_payload_b64'ü bytes'a çevir (Base64 decode)
+            try:
+                remaining_data = base64.b64decode(remaining_payload_b64)
+            except Exception as e:
+                # Base64 decode başarısız olursa, string olarak encode et
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.warning(f"remaining_payload_b64 decode edilemedi, string olarak kullanılıyor: {e}")
+                remaining_data = remaining_payload_b64.encode('utf-8')
+            
+            return next_hop, remaining_data
+            
+        except Exception as e:
+            # C++ kütüphanesi hatası - fallback moda geç
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.warning(f"C++ kütüphanesi kullanılamadı, test moduna geçiliyor: {e}")
+    
+    # FALLBACK: Test modu (basit format)
+    # Beklenen format: b"ip:port|payload"
+    # Örnek: b"127.0.0.1:9000|MERHABA"
+    try:
+        decoded = encrypted_data.decode("utf-8")
+        next_hop, payload = decoded.split("|", 1)
+        return next_hop, payload.encode("utf-8")
+    except Exception as e:
+        raise ValueError(f"Paket formatı geçersiz: {e}")
+

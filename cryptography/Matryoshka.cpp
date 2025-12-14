@@ -20,11 +20,6 @@
 
 using json = nlohmann::json;
 
-
-// Hybrid encryption: AES for data, RSA for AES keys
-// Next hop is encrypted inside inner JSON layer (secure!)
-
-// Internal structures (not exported)
 struct AESPair
 {
     unsigned char key[32]; // 256-bit AES key
@@ -287,6 +282,7 @@ std::string lockMatryoshka(std::vector<unsigned char> payload, EVP_PKEY* rsaKey)
 
     return json_payload;
 }
+
 // ============================================================
 // EXPORTED FUNCTIONS - Namespace Matryoshka
 // ============================================================
@@ -295,7 +291,7 @@ namespace Matryoshka {
 
 // Structs are defined in matryoshka.h
 
-// FOR PERSON 2 (RELAY): Main function to decrypt one layer of the onion
+// For relay, decrypts a single layer
 DecryptedLayer decrypt_layer(const std::string& encrypted_packet, EVP_PKEY* rsa_private_key)
 {
     DecryptedLayer result;
@@ -472,7 +468,7 @@ Circuit build_circuit(int hop_count,
     return circuit;
 }
 
-// FOR PERSON 3 (CLIENT): Send encrypted message through the circuit
+// FOR CLIENT Send encrypted message through the circuit
 std::string send_through_circuit(const Circuit& circuit)
 {
     try {
@@ -518,12 +514,13 @@ std::string send_through_circuit(const Circuit& circuit)
         return "";
     }
 }
-// Utility: Generate RSA key (exported)
+
+// Generate RSA key (exported)
 EVP_PKEY* generateRSAKey() {
     return generateRSAKeyInternal();
 }
 
-// Utility: Get public key as PEM string (exported)
+//Get public key as PEM string (exported)
 std::string getPublicKeyPEM(EVP_PKEY* pkey) {
     if (!pkey) return "";
     

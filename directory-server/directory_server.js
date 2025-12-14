@@ -221,8 +221,7 @@ setInterval(() => {
 }, 10 * 1000); // her 10 saniyede bir kontrol
 
 // START SERVER
-// Not: Dökümanda 5000 yazıyor ama sende 5000 AirPlay tarafından işgal edildiği için 5600 kullanıyoruz.
-const PORT = 5600;
+const PORT = Number(process.env.PORT || 5000);
 
 app.listen(PORT, () => {
   console.log(`Matryoshka Directory Server running on port ${PORT}`);
