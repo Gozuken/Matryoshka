@@ -421,7 +421,7 @@ nlohmann::json relays;
     // Choose random relays without repeats
     std::random_device rd;
     std::mt19937 gen(rd());
-    std::vector<RelayInfo*> chosen_relays;
+    std::vector<int> chosen_relay_indices;  // store indices, not pointers
     std::set<int> used_indices;
 
     for (int i = 0; i < hop_count; ++i)
@@ -429,14 +429,13 @@ nlohmann::json relays;
         int idx;
         do
         {
-            std::uniform_int_distribution<int> dist(0, relay_infos.size() - 1);
+            std::uniform_int_distribution<int> dist(0, static_cast<int>(relay_infos.size()) - 1);
             idx = dist(gen);
         } while (used_indices.count(idx) > 0);
 
         used_indices.insert(idx);
-        RelayInfo& relay = relay_infos[idx];
-        chosen_relays.push_back(&relay);
-        std::cout << relay.ip << ":" << relay.port << " ";
+        chosen_relay_indices.push_back(idx);
+        std::cout << relay_infos[idx].ip << ":" << relay_infos[idx].port << " ";
     }
     std::cout << "\n";
 
@@ -449,7 +448,12 @@ nlohmann::json relays;
     // Iterate backwards (exit relay first, entry relay last)
     for (int i = hop_count - 1; i >= 0; --i)
     {
-        RelayInfo* relay = chosen_relays[i];
+        int relay_idx = chosen_relay_indices[i];
+        if (relay_idx < 0 || relay_idx >= static_cast<int>(relay_infos.size())) {
+            std::cerr << "FATAL ERROR: chosen_relay_indices[" << i << "] out of range: " << relay_idx << "\n";
+            throw std::runtime_error("relay index out of range");
+        }
+        RelayInfo* relay = &relay_infos[relay_idx];
 
         // Determine the next hop IP:port
         std::string next_hop;
@@ -458,7 +462,12 @@ nlohmann::json relays;
         }
         else
         {
-            RelayInfo* next_relay = chosen_relays[i + 1];
+            int next_relay_idx = chosen_relay_indices[i + 1];
+            if (next_relay_idx < 0 || next_relay_idx >= static_cast<int>(relay_infos.size())) {
+                std::cerr << "FATAL ERROR: chosen_relay_indices[" << (i+1) << "] out of range: " << next_relay_idx << "\n";
+                throw std::runtime_error("relay index out of range");
+            }
+            RelayInfo* next_relay = &relay_infos[next_relay_idx];
             next_hop = next_relay->ip + ":" + std::to_string(next_relay->port);
         }
 
@@ -503,13 +512,13 @@ nlohmann::json relays;
 
     std::cout << "\nFinal encrypted payload size: " << current_payload.size() << " bytes\n";
     std::cout << "\nCircuit ready. First relay: "
-        << chosen_relays[0]->ip << ":" << chosen_relays[0]->port << "\n";
+        << relay_infos[chosen_relay_indices[0]].ip << ":" << relay_infos[chosen_relay_indices[0]].port << "\n";
     
     // Build Circuit structure
     Circuit circuit;
     circuit.encrypted_payload = current_payload;
-    circuit.first_relay_ip = chosen_relays[0]->ip;
-    circuit.first_relay_port = chosen_relays[0]->port;
+    circuit.first_relay_ip = relay_infos[chosen_relay_indices[0]].ip;
+    circuit.first_relay_port = relay_infos[chosen_relay_indices[0]].port;
     circuit.hop_count = hop_count;
 
     // Attach response keys collected during build
