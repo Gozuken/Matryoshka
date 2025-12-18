@@ -1,0 +1,13 @@
+[Unit]
+Description=Matryoshka Gateway
+After=network.target
+
+[Service]
+WorkingDirectory=%h/matryoshka/scripts
+ExecStart=/home/%u/matryoshka/.venv/bin/python gateway.py --listen 0.0.0.0:8080
+Restart=on-failure
+User=%u
+Environment=GATEWAY_API_KEY=
+
+[Install]
+WantedBy=multi-user.target

@@ -52,8 +52,11 @@ except ImportError:
 ALLOW_MOCK_FALLBACK = True
 
 # 1: her zaman C++/REAL dene, başarısızsa hata ver
-# 0: C++/REAL dene, olmazsa mock'a düş
+# 0: C++/REAL dene, olmazsa mock'a düş (mock fallback is disabled by default)
 FORCE_REAL = os.environ.get("MATRYOSHKA_FORCE_REAL", "0") == "1"
+
+# By default do NOT fall back to MOCK relays. Set `ALLOW_MOCK_FALLBACK=1` to re-enable mock mode.
+ALLOW_MOCK_FALLBACK = os.environ.get("ALLOW_MOCK_FALLBACK", "0") == "1"
 
 class Circuit:
     """Represents a multi-hop circuit through relay nodes.
@@ -167,101 +170,141 @@ def _load_matryoshka_lib() -> Optional[ctypes.CDLL]:
         except Exception:
             pass
 
-    lib = ctypes.CDLL(dll_abs)
+    # Diagnostic: attempt to load and if it fails, print helpful info
+    try:
+        lib = ctypes.CDLL(dll_abs)
+    except Exception as e:
+        # Provide extra context to help debug load failures on servers
+        try:
+            import platform, traceback, sys, getpass
+            print(f"[DLL Diagnostic] Trying to load: {dll_abs}")
+            print(f"[DLL Diagnostic] exists: {os.path.exists(dll_abs)}")
+            print(f"[DLL Diagnostic] platform: {platform.system()} {platform.release()} ({platform.machine()})")
+            print(f"[DLL Diagnostic] python: {sys.version.splitlines()[0]} ({platform.architecture()})")
+            print(f"[DLL Diagnostic] process pid: {os.getpid()} cwd: {os.getcwd()} user: {getpass.getuser()}")
 
+            # Show the directory and PATH snippets
+            dll_dir = os.path.dirname(dll_abs)
+            try:
+                listing = os.listdir(dll_dir)
+                print(f"[DLL Diagnostic] files in dll_dir: {listing[:20]}")
+            except Exception as _:
+                print("[DLL Diagnostic] could not list dll_dir contents")
 
-    # int matryoshka_build_circuit_json_c(int hop_count, const uint8_t* payload, int payload_len,
-    #                                    const char* final_destination, const char* directory_url, char** json_out)
-    lib.matryoshka_build_circuit_json_c.argtypes = [
-        ctypes.c_int,
-        ctypes.POINTER(ctypes.c_uint8),
-        ctypes.c_int,
-        ctypes.c_char_p,
-        ctypes.c_char_p,
-        ctypes.POINTER(ctypes.c_char_p),
-    ]
-    lib.matryoshka_free_buffer.argtypes = [ctypes.c_void_p]
+            print(f"[DLL Diagnostic] dll_dir: {dll_dir}")
+            print(f"[DLL Diagnostic] PATH contains dll_dir: {dll_dir in os.environ.get('PATH','')}")
+            print(f"[DLL Diagnostic] PATH (start): {os.environ.get('PATH','')[:400]}")
+            print(f"[DLL Diagnostic] ctypes.CDLL raised: {e}")
+            tb = traceback.format_exc()
+            print(f"[DLL Diagnostic] traceback:\n{tb}")
+
+            # Try adding the dll dir and retry once (available on py3.8+)
+            try:
+                os.add_dll_directory(dll_dir)
+                lib = ctypes.CDLL(dll_abs)
+                print("[DLL Diagnostic] retry after add_dll_directory succeeded!")
+                return lib
+            except Exception as e2:
+                print(f"[DLL Diagnostic] retry also failed: {e2}")
+                return None
+        except Exception:
+            pass
+        return None
 
     return lib
 
 
-def _build_circuit_cpp(num_relays: int, message: str, destination: str, directory_base_url: str) -> Circuit:
+def _build_circuit_cpp(num_relays: int, message: str, destination: str, directory_url: str) -> Circuit:
+    """Build a circuit using matryoshka.dll's build_circuit function."""
     lib = _load_matryoshka_lib()
     if not lib:
-        raise FileNotFoundError("matryoshka.dll not found")
+        raise RuntimeError("matryoshka.dll/libmatryoshka.so not found or could not be loaded")
 
-    out_ptr = ctypes.c_char_p()
+    # Set up function signatures (match C ABI in cryptography/Matryoshka.cpp)
+    lib.matryoshka_build_circuit_json_c.argtypes = [
+        ctypes.c_int,        # num_relays
+        ctypes.c_char_p,     # payload pointer
+        ctypes.c_int,        # payload length
+        ctypes.c_char_p,     # destination
+        ctypes.c_char_p,     # directory_url
+        ctypes.POINTER(ctypes.c_char_p)  # out_json
+    ]
+    lib.matryoshka_build_circuit_json_c.restype = ctypes.c_int
 
-    msg_bytes = message.encode("utf-8")
-    msg_buf = (ctypes.c_uint8 * len(msg_bytes)).from_buffer_copy(msg_bytes)
+    # Free buffer function exported by DLL
+    lib.matryoshka_free_buffer.argtypes = [ctypes.c_void_p]
+    lib.matryoshka_free_buffer.restype = None
+
+    out_json = ctypes.c_char_p()
+    msg_bytes = message.encode('utf-8')
 
     rc = lib.matryoshka_build_circuit_json_c(
-        int(num_relays),
-        msg_buf,
-        int(len(msg_bytes)),
-        destination.encode("utf-8"),
-        directory_base_url.encode("utf-8"),
-        ctypes.byref(out_ptr),
+        num_relays,
+        ctypes.c_char_p(msg_bytes),
+        len(msg_bytes),
+        destination.encode('utf-8'),
+        directory_url.encode('utf-8'),
+        ctypes.byref(out_json)
     )
 
-    if rc != 0:
-        raise RuntimeError(f"matryoshka_build_circuit_json_c failed (rc={rc})")
+    if rc != 0 or not out_json:
+        raise RuntimeError(f"matryoshka_build_circuit_json_c failed with code {rc}")
 
     try:
-        json_str = out_ptr.value.decode("utf-8")
+        json_str = out_json.value.decode('utf-8')
         data = json.loads(json_str)
     finally:
-        lib.matryoshka_free_buffer(out_ptr)
+        # Free the buffer returned by the DLL
+        lib.matryoshka_free_buffer(ctypes.cast(out_json, ctypes.c_void_p))
 
-    encrypted_payload = base64.b64decode(data["encrypted_payload_b64"])
-    entry_ip = data["first_relay_ip"]
-    entry_port = int(data["first_relay_port"])
-    hop_count = int(data.get("hop_count", num_relays))
-    
-    # Response encryption key'lerini oluştur (her relay için bir tane)
-    response_keys = generate_response_keys(hop_count)
+    # Parse the JSON response (support both `entry_*` and `first_relay_*` names)
+    entry_ip = data.get("entry_ip") or data.get("first_relay_ip")
+    entry_port = data.get("entry_port") or data.get("first_relay_port")
+    payload_b64 = data.get("encrypted_payload_b64")
+    hop_count = data.get("hop_count")
+    response_keys_data = data.get("response_keys", [])
+
+    if not all([entry_ip, entry_port, payload_b64]):
+        raise RuntimeError(f"Invalid circuit data from C++: keys present: {list(data.keys())}")
+
+    encrypted_payload = base64.b64decode(payload_b64)
+
+    # Parse response keys
+    response_keys = []
+    for rk in response_keys_data:
+        key = base64.b64decode(rk["key_b64"])
+        iv = base64.b64decode(rk["iv_b64"])
+        response_keys.append((key, iv))
 
     circuit = Circuit(
-        relays=[],
         entry_ip=entry_ip,
         entry_port=entry_port,
         encrypted_payload=encrypted_payload,
-        hop_count=hop_count,
+        hop_count=hop_count
     )
     circuit.response_keys = response_keys
-    
-    # Response key'lerini pakete ekle (ilk katmanda)
-    # C++ kütüphanesi paketi oluşturduğu için, Python tarafında paketi parse edip eklememiz gerekiyor
-    # Ancak bu zor, bu yüzden key'leri Circuit objesine kaydedip, 
-    # paketi göndermeden önce ekleyeceğiz veya ayrı bir mekanizma kullanacağız
-    # Şimdilik key'leri Circuit'e kaydediyoruz, pakete ekleme işlemi relay'lerde yapılacak
-    
+
     return circuit
 
 
 def build_circuit(num_relays: int = 3, directory_url: str = "http://localhost:5000/relays") -> Circuit:
-    """Build a circuit through N relay nodes.
-
-    REAL mode (preferred):
-    - Uses matryoshka.dll to query relays + build encrypted onion.
-
-    MOCK mode (fallback):
-    - Returns fake relays and simulated send.
+    """Build a circuit through relay nodes.
+    
+    REAL mode:
+    - returns a shell Circuit that will be populated during send
+    
+    MOCK mode:
+    - queries directory and returns a Circuit with relays[] list
     """
+    directory_base_url = directory_url
+    if directory_base_url.endswith("/relays"):
+        directory_base_url = directory_base_url[:-len("/relays")]
 
-    # Try REAL mode first if possible (directory_url -> base URL for C++ code)
-    directory_base_url = directory_url.removesuffix("/relays")
-
+    # Try REAL mode first if DLL is available
     try:
-        # C++ build requires destination + message; we supply placeholders here and rebuild at send time.
-        # So here we only check whether we CAN reach directory server and have relays.
-        relays = query_directory_for_relays(directory_url)
-        if relays and _find_default_dll():
-            # Return a REAL circuit shell; actual payload is built in send_through_circuit.
-            # (We don't know destination/message yet.)
-            return Circuit(relays=[], entry_ip=None, entry_port=None, encrypted_payload=None, hop_count=num_relays)
-        if FORCE_REAL:
-            raise RuntimeError("FORCE_REAL enabled but directory server or DLL unavailable")
+        if _find_default_dll():
+            # Return a shell circuit; actual build happens in send_through_circuit
+            return Circuit(hop_count=num_relays)
     except Exception as e:
         if FORCE_REAL:
             raise
@@ -287,7 +330,7 @@ def build_circuit(num_relays: int = 3, directory_url: str = "http://localhost:50
 
     return Circuit(relays=selected_relays)
 
-def send_through_circuit(circuit: Circuit, message: str, destination: str) -> Optional[str]:
+def send_through_circuit(circuit: Circuit, message: str, destination: str, directory_url: Optional[str] = None) -> Optional[str]:
     """Send a message through the circuit to the destination.
 
     REAL mode:
@@ -301,47 +344,77 @@ def send_through_circuit(circuit: Circuit, message: str, destination: str) -> Op
     if not circuit:
         raise ValueError("Invalid circuit")
 
-    # If circuit is REAL-shell (built without payload), build now.
-    directory_base_url = os.environ.get("MATRYOSHKA_DIRECTORY_URL", "http://localhost:5000")
+    # Normalize directory URL
+    directory_base_url = directory_url or os.environ.get("MATRYOSHKA_DIRECTORY_URL", "http://localhost:5000")
+    if directory_base_url.endswith("/relays"):
+        directory_base_url = directory_base_url[:-len("/relays")]
 
+    # Try REAL mode
     try:
         if _find_default_dll():
-            real_circuit = _build_circuit_cpp(len(circuit), message, destination, directory_base_url)
-
-            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            sock.settimeout(10)
             try:
-                sock.connect((real_circuit.entry_ip, real_circuit.entry_port))
-                sock.sendall(real_circuit.encrypted_payload)
+                # Build the encrypted circuit with the message and destination
+                real_circuit = _build_circuit_cpp(len(circuit), message, destination, directory_base_url)
+                
+                print(f"[Core] Connecting to entry relay: {real_circuit.entry_ip}:{real_circuit.entry_port}")
+                print(f"[Core] Payload size: {len(real_circuit.encrypted_payload)} bytes")
+                
+                # Create TCP socket and connect
+                sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                sock.settimeout(30)  # Increased timeout to 30 seconds
+                
                 try:
-                    sock.shutdown(socket.SHUT_WR)
-                except Exception:
-                    pass
-
-                # Read until EOF
-                resp = b""
-                while True:
-                    chunk = sock.recv(4096)
-                    if not chunk:
-                        break
-                    resp += chunk
-
-                # If the response is encrypted in layers, try to decrypt
-                final_bytes = resp
-                if resp and real_circuit.response_keys:
+                    sock.connect((real_circuit.entry_ip, real_circuit.entry_port))
+                    print(f"[Core] Connected to {real_circuit.entry_ip}:{real_circuit.entry_port}")
+                    
+                    # Send the encrypted payload
+                    sock.sendall(real_circuit.encrypted_payload)
+                    print(f"[Core] Sent {len(real_circuit.encrypted_payload)} bytes")
+                    
+                    # Signal end of transmission
                     try:
-                        final_bytes = _decrypt_response_layers(resp, real_circuit.response_keys)
+                        sock.shutdown(socket.SHUT_WR)
+                        print(f"[Core] Signaled end of transmission")
                     except Exception as e:
-                        print(f"[Core Warning] Response decryption failed: {e}, returning raw response")
+                        print(f"[Core Warning] Could not shutdown socket for writing: {e}")
 
-                # If it looks like an HTTP response, return the full HTTP response
-                # (headers + body) so callers can choose to render or save it.
-                if final_bytes.startswith(b"HTTP/"):
-                    return final_bytes.decode("utf-8", errors="replace").strip()
+                    # Read response until EOF
+                    print(f"[Core] Waiting for response...")
+                    resp = b""
+                    while True:
+                        chunk = sock.recv(4096)
+                        if not chunk:
+                            break
+                        resp += chunk
+                        print(f"[Core] Received {len(chunk)} bytes (total: {len(resp)})")
 
-                return final_bytes.decode("utf-8", errors="replace").strip() if final_bytes else ""
-            finally:
-                sock.close()
+                    print(f"[Core] Total response: {len(resp)} bytes")
+
+                    # Decrypt response if we have keys
+                    final_bytes = resp
+                    if resp and real_circuit.response_keys:
+                        try:
+                            print(f"[Core] Decrypting response through {len(real_circuit.response_keys)} layers...")
+                            final_bytes = _decrypt_response_layers(resp, real_circuit.response_keys)
+                            print(f"[Core] Decrypted response: {len(final_bytes)} bytes")
+                        except Exception as e:
+                            print(f"[Core Warning] Response decryption failed: {e}, returning raw response")
+
+                    # Return the response
+                    if final_bytes.startswith(b"HTTP/"):
+                        return final_bytes.decode("utf-8", errors="replace").strip()
+
+                    return final_bytes.decode("utf-8", errors="replace").strip() if final_bytes else ""
+                    
+                finally:
+                    sock.close()
+                    print(f"[Core] Socket closed")
+                    
+            except Exception as e:
+                print(f"[Core Error] Failed to send through circuit: {e}")
+                import traceback
+                traceback.print_exc()
+                raise
 
         if FORCE_REAL:
             raise RuntimeError("FORCE_REAL enabled but matryoshka.dll unavailable")
@@ -353,14 +426,87 @@ def send_through_circuit(circuit: Circuit, message: str, destination: str) -> Op
             raise
         print(f"[Core Warning] REAL send failed ({e}). Falling back to MOCK.")
 
-    # --- MOCK ---
+    # --- MOCK fallback ---
     if not circuit.relays:
-        raise ValueError("Invalid circuit")
+        raise ValueError("Invalid circuit (no relays in MOCK mode)")
 
     for _ in circuit.relays:
         time.sleep(0.3)
 
     return f"Message received by {destination} (Securely Delivered)"
+
+
+def send_through_circuit_bytes(circuit: Circuit, message_bytes: bytes, destination: str, directory_url: Optional[str] = None) -> bytes:
+    """Send raw bytes through the circuit and return raw bytes response.
+
+    Returns raw response bytes (useful for HTTP proxying or binary downloads).
+    """
+    if not circuit:
+        raise ValueError("Invalid circuit")
+
+    directory_base_url = directory_url or os.environ.get("MATRYOSHKA_DIRECTORY_URL", "http://localhost:5000")
+    if directory_base_url.endswith("/relays"):
+        directory_base_url = directory_base_url[:-len("/relays")]
+
+    try:
+        if _find_default_dll():
+            try:
+                # Build circuit with message bytes decoded as UTF-8
+                real_circuit = _build_circuit_cpp(
+                    len(circuit),
+                    message_bytes.decode('utf-8', errors='replace'),
+                    destination,
+                    directory_base_url
+                )
+
+                sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                sock.settimeout(30)
+                
+                try:
+                    sock.connect((real_circuit.entry_ip, real_circuit.entry_port))
+                    sock.sendall(real_circuit.encrypted_payload)
+                    
+                    try:
+                        sock.shutdown(socket.SHUT_WR)
+                    except Exception:
+                        pass
+
+                    resp = b""
+                    while True:
+                        chunk = sock.recv(4096)
+                        if not chunk:
+                            break
+                        resp += chunk
+
+                    if resp and real_circuit.response_keys:
+                        try:
+                            resp = _decrypt_response_layers(resp, real_circuit.response_keys)
+                        except Exception:
+                            pass
+
+                    return resp
+                    
+                finally:
+                    sock.close()
+                    
+            except Exception as e:
+                print(f"[Core Error] Failed to send bytes through circuit: {e}")
+                raise
+
+        if FORCE_REAL:
+            raise RuntimeError("FORCE_REAL enabled but matryoshka.dll unavailable")
+
+    except Exception as e:
+        if FORCE_REAL:
+            raise
+        if not ALLOW_MOCK_FALLBACK:
+            raise
+        print(f"[Core Warning] REAL send failed ({e}). Falling back to MOCK.")
+
+    # MOCK fallback: return a simple HTTP-like response bytes
+    body = b"Message received by %b (Securely Delivered)" % destination.encode('utf-8')
+    resp = b"HTTP/1.1 200 OK\r\nContent-Type: text/plain; charset=utf-8\r\nContent-Length: " + str(len(body)).encode('ascii') + b"\r\n\r\n" + body
+    return resp
 
 
 def _decrypt_response_layers(encrypted_response: bytes, response_keys: List[Tuple[bytes, bytes]]) -> bytes:
@@ -389,4 +535,3 @@ def _decrypt_response_layers(encrypted_response: bytes, response_keys: List[Tupl
             break
     
     return current_data
-

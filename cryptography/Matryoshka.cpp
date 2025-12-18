@@ -306,6 +306,10 @@ DecryptedLayer decrypt_layer(const std::string& encrypted_packet, EVP_PKEY* rsa_
         AESPair aes_pair = decrypt_RSA(rsa_private_key, rsa_aes);
         std::vector<unsigned char> decrypted_payload = decrypt_AES(enc_payload, aes_pair);
         
+        // Save response key/iv into the result so relays can encrypt upstream responses
+        std::memcpy(result.response_key, aes_pair.key, sizeof(aes_pair.key));
+        std::memcpy(result.response_iv, aes_pair.iv, sizeof(aes_pair.iv));
+        
         // Parse decrypted payload to extract next_hop
         std::string decrypted_str(decrypted_payload.begin(), decrypted_payload.end());
         json inner_j = json::parse(decrypted_str);
@@ -410,6 +414,9 @@ Circuit build_circuit(int hop_count,
     // Build the matryoshka payload by encrypting from innermost to outermost layer
     std::vector<unsigned char> current_payload = payload;
 
+    // Track response keys for client so it can decrypt responses (entry -> exit order)
+    std::vector<ResponseKey> response_keys;
+
     // Iterate backwards (exit relay first, entry relay last)
     for (int i = hop_count - 1; i >= 0; --i)
     {
@@ -436,6 +443,12 @@ Circuit build_circuit(int hop_count,
 
         // Generate AES key for this layer
         AESPair aes_pair = generateAESPair();
+
+        // Save the response key material in the per-circuit list (entry->exit order)
+        ResponseKey resp_key;
+        std::memcpy(resp_key.key, aes_pair.key, sizeof(aes_pair.key));
+        std::memcpy(resp_key.iv, aes_pair.iv, sizeof(aes_pair.iv));
+        response_keys.push_back(resp_key);
 
         // Encrypt the inner payload (which contains next_hop) with AES
         std::vector<unsigned char> aes_encrypted = encrypt_AES(inner_payload, aes_pair);
@@ -464,6 +477,9 @@ Circuit build_circuit(int hop_count,
     circuit.first_relay_ip = chosen_relays[0]->ip;
     circuit.first_relay_port = chosen_relays[0]->port;
     circuit.hop_count = hop_count;
+
+    // Attach response keys collected during build
+    circuit.response_keys = response_keys;
     
     return circuit;
 }
@@ -585,6 +601,20 @@ MATRYOSHKA_API int matryoshka_decrypt_layer_c(
     out_layer->remaining_len = static_cast<int>(cpp_layer.remaining_payload.size());
     out_layer->remaining_payload = dup_bytes(cpp_layer.remaining_payload);
 
+    // Copy response key/iv into malloc'd buffers if available
+    out_layer->response_key_len = sizeof(cpp_layer.response_key);
+    out_layer->response_key = nullptr;
+    if (out_layer->response_key_len > 0) {
+        out_layer->response_key = static_cast<std::uint8_t*>(std::malloc(out_layer->response_key_len));
+        if (out_layer->response_key) std::memcpy(out_layer->response_key, cpp_layer.response_key, out_layer->response_key_len);
+    }
+    out_layer->response_iv_len = sizeof(cpp_layer.response_iv);
+    out_layer->response_iv = nullptr;
+    if (out_layer->response_iv_len > 0) {
+        out_layer->response_iv = static_cast<std::uint8_t*>(std::malloc(out_layer->response_iv_len));
+        if (out_layer->response_iv) std::memcpy(out_layer->response_iv, cpp_layer.response_iv, out_layer->response_iv_len);
+    }
+
     if (!out_layer->next_hop && out_layer->remaining_len > 0 && !out_layer->remaining_payload) {
         return -3; // allocation failure
     }
@@ -695,6 +725,12 @@ MATRYOSHKA_API int matryoshka_decrypt_layer_json_c(
     j["next_hop"] = cpp_layer.next_hop;
     j["remaining_payload_b64"] = remaining_b64;
 
+    // Add response key/iv (base64) so caller can store and reuse for upstream encryption
+    std::vector<unsigned char> resp_key_vec(cpp_layer.response_key, cpp_layer.response_key + sizeof(cpp_layer.response_key));
+    std::vector<unsigned char> resp_iv_vec(cpp_layer.response_iv, cpp_layer.response_iv + sizeof(cpp_layer.response_iv));
+    j["response_key_b64"] = to_base64(resp_key_vec);
+    j["response_iv_b64"] = to_base64(resp_iv_vec);
+
     std::string out = j.dump();
     *json_out = dup_cstr(out);
     if (!*json_out) {
@@ -734,6 +770,18 @@ MATRYOSHKA_API int matryoshka_build_circuit_json_c(
     j["first_relay_ip"] = cpp_circuit.first_relay_ip;
     j["first_relay_port"] = cpp_circuit.first_relay_port;
     j["hop_count"] = cpp_circuit.hop_count;
+
+    // Export response keys (base64-encoded) so higher-level clients can decrypt responses
+    json response_keys_json = json::array();
+    for (const auto& rk : cpp_circuit.response_keys) {
+        json k;
+        std::vector<unsigned char> key_vec(rk.key, rk.key + sizeof(rk.key));
+        std::vector<unsigned char> iv_vec(rk.iv, rk.iv + sizeof(rk.iv));
+        k["key_b64"] = to_base64(key_vec);
+        k["iv_b64"] = to_base64(iv_vec);
+        response_keys_json.push_back(k);
+    }
+    j["response_keys"] = response_keys_json;
 
     std::string out = j.dump();
     *json_out = dup_cstr(out);

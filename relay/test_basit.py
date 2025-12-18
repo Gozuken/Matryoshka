@@ -50,6 +50,31 @@ def test_imports():
     return True
 
 
+def test_encrypt_response():
+    """Smoke test for encrypt_response_aes method"""
+    print("\n" + "=" * 60)
+    print("ENCRYPT_RESPONSE SMOKE TEST")
+    print("=" * 60)
+    try:
+        from relay_node import RelayNode
+        r = RelayNode(relay_id="test_relay", port=9009, directory_url="http://127.0.0.1:5000")
+        key = b"\x00" * 32
+        iv = b"\x01" * 16
+        sample = b"HELLO TEST"
+        enc = r.encrypt_response_aes(sample, key, iv)
+        if isinstance(enc, bytes) and len(enc) > 0:
+            print("✅ encrypt_response_aes smoke test passed")
+            return True
+        else:
+            print("❌ encrypt_response_aes returned invalid result")
+            return False
+    except Exception as e:
+        print(f"❌ encrypt_response_aes smoke test failed: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
+
+
 def test_crypto_fallback():
     """Crypto modülünün fallback modunu test eder"""
     print("\n" + "=" * 60)
@@ -72,9 +97,11 @@ def test_crypto_fallback():
             backend=default_backend()
         )
         
-        # decrypt_layer'ı çağır
-        print("decrypt_layer() çağrılıyor...")
-        next_hop, remaining_data = decrypt_layer(test_data, private_key)
+        # decrypt_layer'ı çağır (4-tuple okumaya uyumlu)
+        print("decrypt_layer() çağriliyor...")
+        res = decrypt_layer(test_data, private_key)
+        # res may be (next_hop, remaining_data) or (next_hop, remaining_data, response_key, response_iv)
+        next_hop, remaining_data = res[0], res[1]
         
         print(f"✅ Başarılı!")
         print(f"   Next hop: {next_hop}")
@@ -106,6 +133,9 @@ def main():
     
     # Test 2: Crypto fallback
     results.append(("Crypto Fallback Mod", test_crypto_fallback()))
+
+    # Test 3: encrypt_response smoke
+    results.append(("encrypt_response_aes", test_encrypt_response()))
     
     # Sonuçları özetle
     print("\n" + "=" * 60)

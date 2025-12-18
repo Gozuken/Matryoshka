@@ -1,0 +1,12 @@
+[Unit]
+Description=Matryoshka Relay %i
+After=network.target
+
+[Service]
+WorkingDirectory=%h/matryoshka/relay
+ExecStart=/home/%u/matryoshka/.venv/bin/python relay_node.py --id relay%i --port %i --directory http://127.0.0.1:5000 --ip %h
+Restart=on-failure
+User=%u
+
+[Install]
+WantedBy=multi-user.target

@@ -800,3 +800,66 @@
 2025-12-14 18:07:10,789 - __main__ - INFO - Baðlantý kapatýldý: 127.0.0.1:49262
 2025-12-14 18:07:10,789 - __main__ - INFO - Paket baþarýyla iletildi: 127.0.0.1:8003
 2025-12-14 18:07:10,789 - __main__ - INFO - Baðlantý kapatýldý: 127.0.0.1:49261
+2025-12-14 20:49:14,140 - __main__ - INFO - Yeni RSA anahtar çifti oluþturuluyor...
+2025-12-14 20:49:14,211 - __main__ - INFO - Directory server'a kayýt olunuyor: http://127.0.0.1:5000/register
+2025-12-14 20:49:14,232 - __main__ - INFO - Directory server'a kayýt olunuyor: http://127.0.0.1:5000/register
+2025-12-14 20:49:14,241 - __main__ - INFO - Directory server'a kayýt olunuyor: http://127.0.0.1:5000/register
+2025-12-14 20:49:14,251 - __main__ - INFO - Directory server'a baþarýyla kayýt olundu
+2025-12-14 20:49:14,252 - __main__ - INFO - Relay node baþlatýldý: relay_1 - Port: 8001
+2025-12-14 20:49:14,252 - __main__ - INFO - Baðlantýlar dinleniyor...
+2025-12-14 20:49:14,253 - __main__ - INFO - Directory server'a baþarýyla kayýt olundu
+2025-12-14 20:49:14,254 - __main__ - INFO - Relay node baþlatýldý: relay_3 - Port: 8003
+2025-12-14 20:49:14,254 - __main__ - INFO - Baðlantýlar dinleniyor...
+2025-12-14 20:49:14,255 - __main__ - INFO - Directory server'a baþarýyla kayýt olundu
+2025-12-14 20:49:14,256 - __main__ - INFO - Relay node baþlatýldý: relay_2 - Port: 8002
+2025-12-14 20:49:14,256 - __main__ - INFO - Baðlantýlar dinleniyor...
+2025-12-14 20:49:16,229 - __main__ - INFO - Yeni baðlantý: 127.0.0.1:55605
+2025-12-14 20:49:16,239 - __main__ - INFO - Paket alýndý: 3346 byte
+2025-12-14 20:49:16,250 - __main__ - INFO - Þifre çözüldü, bir sonraki hop: 127.0.0.1:8002
+2025-12-14 20:49:16,250 - __main__ - INFO - Paket iletililiyor: 127.0.0.1:8002
+2025-12-14 20:49:16,251 - __main__ - INFO - Yeni baðlantý: 127.0.0.1:55606
+2025-12-14 20:49:16,270 - __main__ - INFO - Paket alýndý: 1894 byte
+2025-12-14 20:49:16,281 - __main__ - INFO - Þifre çözüldü, bir sonraki hop: 127.0.0.1:8001
+2025-12-14 20:49:16,281 - __main__ - INFO - Paket iletililiyor: 127.0.0.1:8001
+2025-12-14 20:49:16,282 - __main__ - INFO - Yeni baðlantý: 127.0.0.1:55607
+2025-12-14 20:49:16,301 - __main__ - INFO - Paket alýndý: 806 byte
+2025-12-14 20:49:16,309 - __main__ - INFO - Þifre çözüldü, bir sonraki hop: 127.0.0.1:9000
+2025-12-14 20:49:16,310 - __main__ - INFO - Paket iletililiyor: 127.0.0.1:9000
+2025-12-14 20:49:16,332 - __main__ - INFO - Paket baþarýyla iletildi: 127.0.0.1:9000
+2025-12-14 20:49:16,333 - __main__ - INFO - Baðlantý kapatýldý: 127.0.0.1:55607
+2025-12-14 20:49:16,333 - __main__ - INFO - Paket baþarýyla iletildi: 127.0.0.1:8001
+2025-12-14 20:49:16,333 - __main__ - INFO - Baðlantý kapatýldý: 127.0.0.1:55606
+2025-12-14 20:49:16,334 - __main__ - INFO - Paket baþarýyla iletildi: 127.0.0.1:8002
+2025-12-14 20:49:16,334 - __main__ - INFO - Baðlantý kapatýldý: 127.0.0.1:55605
+2025-12-14 20:55:02,848 - __main__ - INFO - Yeni RSA anahtar Ã§ifti oluÅŸturuluyor...
+2025-12-14 20:55:02,859 - __main__ - INFO - Yeni RSA anahtar Ã§ifti oluÅŸturuluyor...
+2025-12-14 20:55:02,884 - __main__ - INFO - Directory server'a kayÄ±t olunuyor: http://127.0.0.1:5000/register
+2025-12-14 20:55:02,892 - __main__ - INFO - Directory server'a kayÄ±t olunuyor: http://127.0.0.1:5000/register
+2025-12-14 20:55:02,899 - __main__ - INFO - Directory server'a baÅŸarÄ±yla kayÄ±t olundu
+2025-12-14 20:55:02,899 - __main__ - INFO - Relay node baÅŸlatÄ±ldÄ±: relay_1 - Port: 8001
+2025-12-14 20:55:02,899 - __main__ - INFO - BaÄŸlantÄ±lar dinleniyor...
+2025-12-14 20:55:02,920 - __main__ - INFO - Directory server'a baÅŸarÄ±yla kayÄ±t olundu
+2025-12-14 20:55:02,920 - __main__ - INFO - Relay node baÅŸlatÄ±ldÄ±: relay_3 - Port: 8003
+2025-12-14 20:55:02,921 - __main__ - INFO - BaÄŸlantÄ±lar dinleniyor...
+2025-12-14 20:55:02,943 - __main__ - INFO - Directory server'a kayÄ±t olunuyor: http://127.0.0.1:5000/register
+2025-12-14 20:55:02,950 - __main__ - INFO - Directory server'a baÅŸarÄ±yla kayÄ±t olundu
+2025-12-14 20:55:02,950 - __main__ - INFO - Relay node baÅŸlatÄ±ldÄ±: relay_2 - Port: 8002
+2025-12-14 20:55:02,950 - __main__ - INFO - BaÄŸlantÄ±lar dinleniyor...
+2025-12-14 20:55:04,711 - __main__ - INFO - Yeni baÄŸlantÄ±: 127.0.0.1:60147
+2025-12-14 20:55:04,734 - __main__ - INFO - Paket alÄ±ndÄ±: 3346 byte
+2025-12-14 20:55:04,745 - __main__ - INFO - Åžifre Ã§Ã¶zÃ¼ldÃ¼, bir sonraki hop: 127.0.0.1:8001
+2025-12-14 20:55:04,746 - __main__ - INFO - Paket iletililiyor: 127.0.0.1:8001
+2025-12-14 20:55:04,746 - __main__ - INFO - Yeni baÄŸlantÄ±: 127.0.0.1:60148
+2025-12-14 20:55:04,766 - __main__ - INFO - Paket alÄ±ndÄ±: 1894 byte
+2025-12-14 20:55:04,777 - __main__ - INFO - Åžifre Ã§Ã¶zÃ¼ldÃ¼, bir sonraki hop: 127.0.0.1:8002
+2025-12-14 20:55:04,778 - __main__ - INFO - Paket iletililiyor: 127.0.0.1:8002
+2025-12-14 20:55:04,778 - __main__ - INFO - Yeni baÄŸlantÄ±: 127.0.0.1:60149
+2025-12-14 20:55:04,797 - __main__ - INFO - Paket alÄ±ndÄ±: 806 byte
+2025-12-14 20:55:04,807 - __main__ - INFO - Åžifre Ã§Ã¶zÃ¼ldÃ¼, bir sonraki hop: 127.0.0.1:9000
+2025-12-14 20:55:04,807 - __main__ - INFO - Paket iletililiyor: 127.0.0.1:9000
+2025-12-14 20:55:04,827 - __main__ - INFO - Paket baÅŸarÄ±yla iletildi: 127.0.0.1:9000
+2025-12-14 20:55:04,828 - __main__ - INFO - BaÄŸlantÄ± kapatÄ±ldÄ±: 127.0.0.1:60149
+2025-12-14 20:55:04,828 - __main__ - INFO - Paket baÅŸarÄ±yla iletildi: 127.0.0.1:8002
+2025-12-14 20:55:04,828 - __main__ - INFO - BaÄŸlantÄ± kapatÄ±ldÄ±: 127.0.0.1:60148
+2025-12-14 20:55:04,828 - __main__ - INFO - Paket baÅŸarÄ±yla iletildi: 127.0.0.1:8001
+2025-12-14 20:55:04,829 - __main__ - INFO - BaÄŸlantÄ± kapatÄ±ldÄ±: 127.0.0.1:60147

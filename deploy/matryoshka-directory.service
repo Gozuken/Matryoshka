@@ -1,0 +1,13 @@
+[Unit]
+Description=Matryoshka Directory Server
+After=network.target
+
+[Service]
+WorkingDirectory=%h/matryoshka/directory-server
+ExecStart=/usr/bin/node directory_server.js
+Restart=on-failure
+Environment=PORT=5000
+User=%u
+
+[Install]
+WantedBy=multi-user.target

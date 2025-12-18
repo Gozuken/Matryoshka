@@ -30,13 +30,22 @@ except ImportError:
         raise NotImplementedError("decrypt_layer fonksiyonu henüz implement edilmedi")
 
 # Logging yapılandırması
+# Ensure stdout/stderr use UTF-8 so non-ASCII log messages work on Windows consoles
+try:
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8")
+    if hasattr(sys.stderr, "reconfigure"):
+        sys.stderr.reconfigure(encoding="utf-8")
+except Exception:
+    pass
+
+# Configure logging: write log file in UTF-8 and stream to stdout
+file_handler = logging.FileHandler('relay_node.log', encoding='utf-8')
+stream_handler = logging.StreamHandler(sys.stdout)
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler('relay_node.log'),
-        logging.StreamHandler(sys.stdout)
-    ]
+    handlers=[file_handler, stream_handler],
 )
 logger = logging.getLogger(__name__)
 
@@ -214,6 +223,7 @@ class RelayNode:
             - next hop'tan gelen response bytes (varsa)
             - hata durumunda None
         """
+
         try:
             # Adresi parse et
             if ':' not in address:
@@ -289,10 +299,16 @@ class RelayNode:
             logger.info(f"Paket alındı: {len(received_data)} byte")
             self.stats['packets_received'] += 1
             
-            # Bir katman şifresini çöz
+            # Bir katman şifresini çöz (now returns response_key/iv)
             try:
-                next_hop, remaining_data = decrypt_layer(received_data, self.private_key)
+                next_hop, remaining_data, response_key, response_iv = decrypt_layer(received_data, self.private_key)
                 logger.info(f"Şifre çözüldü, bir sonraki hop: {next_hop}")
+
+                # Save response keys for encrypting responses back upstream
+                self.current_response_key = response_key if response_key else None
+                self.current_response_iv = response_iv if response_iv else None
+                if self.current_response_key:
+                    logger.debug("Response key saved for upstream encryption")
             except NotImplementedError:
                 logger.error("decrypt_layer fonksiyonu henüz implement edilmedi")
                 self.stats['errors'] += 1
@@ -308,10 +324,27 @@ class RelayNode:
                 logger.error(f"Paket iletilemedi: {next_hop}")
                 return
 
-            # Response varsa upstream'e geri gönder
+            # Response varsa upstream'e geri gönder (encrypt with saved key if available)
             if response:
                 try:
-                    connection.sendall(response)
+                    if getattr(self, 'current_response_key', None):
+                        try:
+                            encrypted_response = self.encrypt_response_aes(
+                                response,
+                                self.current_response_key,
+                                self.current_response_iv
+                            )
+                            # Send encrypted response upstream (no marker - relays simply wrap ciphertext)
+                            connection.sendall(encrypted_response)
+                            logger.info("Response encrypted and sent upstream")
+                        except Exception as e:
+                            logger.error(f"Response encryption failed: {e}")
+                            # Fallback to sending cleartext to avoid breaking
+                            connection.sendall(response)
+                    else:
+                        # No key available; send cleartext (should be rare)
+                        logger.warning("No response key available, sending cleartext")
+                        connection.sendall(response)
                 except Exception as e:
                     logger.error(f"Response upstream'e gönderilemedi: {e}")
                     self.stats['errors'] += 1
@@ -322,6 +355,12 @@ class RelayNode:
             logger.error(f"Bağlantı işleme hatası: {e}")
             self.stats['errors'] += 1
         finally:
+            # Clear per-connection response keys to avoid reuse
+            try:
+                self.current_response_key = None
+                self.current_response_iv = None
+            except Exception:
+                pass
             connection.close()
             logger.info(f"Bağlantı kapatıldı: {address[0]}:{address[1]}")
     
@@ -393,6 +432,42 @@ class RelayNode:
         logger.info(f"Sinyal alındı: {signum}")
         self.shutdown()
         sys.exit(0)
+
+    def encrypt_response_aes(self, response: bytes, key: bytes, iv: bytes) -> bytes:
+        """
+        Encrypt response using AES-256-CBC before sending upstream.
+
+        Args:
+            response: Cleartext response from downstream
+            key: 32-byte AES key from circuit setup
+            iv: 16-byte IV from circuit setup
+
+        Returns:
+            Encrypted response bytes
+        """
+        from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+        from cryptography.hazmat.primitives.padding import PKCS7
+        from cryptography.hazmat.backends import default_backend
+
+        try:
+            # Pad the response to AES block size (128 bits)
+            padder = PKCS7(128).padder()
+            padded_response = padder.update(response) + padder.finalize()
+
+            # Encrypt with AES-256-CBC
+            cipher = Cipher(
+                algorithms.AES(key), 
+                modes.CBC(iv), 
+                backend=default_backend()
+            )
+            encryptor = cipher.encryptor()
+            encrypted = encryptor.update(padded_response) + encryptor.finalize()
+
+            return encrypted
+
+        except Exception as e:
+            logger.error(f"AES encryption failed: {e}")
+            raise
 
 
 def main():

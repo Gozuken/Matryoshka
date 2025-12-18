@@ -27,6 +27,10 @@ namespace Matryoshka {
     struct MATRYOSHKA_API DecryptedLayer {
         std::string next_hop;                      // "ip:port" of next hop
         std::vector<unsigned char> remaining_payload;  // Encrypted payload for next hop
+
+        // Response encryption material extracted from the layer (for upstream responses)
+        unsigned char response_key[32];  // AES-256 key for response encryption
+        unsigned char response_iv[16];   // AES-128 IV for response encryption
     };
 
     /**
@@ -55,11 +59,20 @@ namespace Matryoshka {
      * Circuit structure containing encrypted onion and entry relay info
      * Created by build_circuit() and used by send_through_circuit()
      */
+    // Simple POD to hold response AES key/iv for each hop
+    struct MATRYOSHKA_API ResponseKey {
+        unsigned char key[32];
+        unsigned char iv[16];
+    };
+
     struct MATRYOSHKA_API Circuit {
         std::vector<unsigned char> encrypted_payload;  // The complete onion
         std::string first_relay_ip;                   // Entry relay IP
         int first_relay_port;                         // Entry relay port
         int hop_count;                                // Number of hops
+
+        // Response keys in order from entry->exit (client will decrypt in reverse)
+        std::vector<ResponseKey> response_keys;
     };
 
     /**
@@ -134,6 +147,12 @@ extern "C" {
         char* next_hop;                 // null-terminated "ip:port"
         std::uint8_t* remaining_payload;
         int remaining_len;
+
+        // Response key/iv (malloc'd buffers, len given)
+        std::uint8_t* response_key;
+        int response_key_len;
+        std::uint8_t* response_iv;
+        int response_iv_len;
     };
 
     struct MATRYOSHKA_API MatryoshkaC_Circuit {
