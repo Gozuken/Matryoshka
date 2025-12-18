@@ -237,10 +237,12 @@ def _build_circuit_cpp(num_relays: int, message: str, destination: str, director
 
     out_json = ctypes.c_char_p()
     msg_bytes = message.encode('utf-8')
+    # Use an explicit buffer to ensure memory remains alive during the C call
+    msg_buf = ctypes.create_string_buffer(msg_bytes, len(msg_bytes))
 
     rc = lib.matryoshka_build_circuit_json_c(
         num_relays,
-        ctypes.c_char_p(msg_bytes),
+        msg_buf,  # char* to payload
         len(msg_bytes),
         destination.encode('utf-8'),
         directory_url.encode('utf-8'),

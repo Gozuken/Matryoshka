@@ -337,25 +337,51 @@ Circuit build_circuit(int hop_count,
     const std::string& final_destination,
     const std::string& directory_url)
 {
-    nlohmann::json relays = getRelaysInternal(directory_url);
-
-    if (hop_count < 1)
-    {
-        std::cerr << "Error: hop_count must be at least 1.\n";
+nlohmann::json relays;
+    try {
+        relays = getRelaysInternal(directory_url);
+    } catch (const std::exception& e) {
+        std::cerr << "Error fetching relays from directory: " << e.what() << "\n";
         return Circuit{};
     }
 
-    if (hop_count > relays["count"].get<int>())
+    if (hop_count < 1)
     {
-        std::cerr << "Error: Not enough relays available to build the circuit.\n";
+        std::cerr << "Error: hop_count must be at least 1." << std::endl;
+        return Circuit{};
+    }
+
+    // Be defensive: ensure relays JSON contains a valid count field
+    int available_relays = 0;
+    if (relays.is_object() && relays.contains("count")) {
+        try {
+            available_relays = relays["count"].get<int>();
+        } catch (const std::exception& e) {
+            std::cerr << "Error parsing 'count' from directory response: " << e.what() << "\n";
+            return Circuit{};
+        }
+    } else {
+        std::cerr << "Error: Directory response invalid or missing 'count' field: " << relays.dump() << "\n";
+        return Circuit{};
+    }
+
+    if (hop_count > available_relays)
+    {
+        std::cerr << "Error: Not enough relays available to build the circuit. Available: " << available_relays << "\n";
         return Circuit{};
     }
 
     std::cout << relays.dump(4) << "\n";
 
+    if (!relays.contains("relays") || !relays["relays"].is_array()) {
+        std::cerr << "Error: Directory response missing 'relays' array: " << relays.dump() << "\n";
+        return Circuit{};
+    }
+
     // Put all relays from json to a vector
     std::vector<RelayInfo> relay_infos;
-    relay_infos.reserve(relays["relays"].size());
+    try {
+        relay_infos.reserve(relays["relays"].size());
 
     for (const auto& relay : relays["relays"])
     {
@@ -388,7 +414,10 @@ Circuit build_circuit(int hop_count,
         std::cerr << "Error: Not enough valid relays after parsing.\n";
         return Circuit{};
     }
-
+    } catch (const std::exception& e) {
+        std::cerr << "Exception while parsing relays: " << e.what() << "\n";
+        return Circuit{};
+    }
     // Choose random relays without repeats
     std::random_device rd;
     std::mt19937 gen(rd());
@@ -454,6 +483,11 @@ Circuit build_circuit(int hop_count,
         std::vector<unsigned char> aes_encrypted = encrypt_AES(inner_payload, aes_pair);
 
         // Encrypt the AES key/iv with the relay's RSA public key
+        if (!relay->key || relay->key.get() == nullptr) {
+            std::cerr << "matryoshka::build_circuit: null public key for relay "
+                      << relay->ip << ":" << relay->port << " — aborting circuit build\n";
+            throw std::runtime_error("relay public key is null");
+        }
         RSAEncryptedAESPair rsa_encrypted_aes = encrypt_RSA(relay->key.get(), aes_pair);
 
         // Build outer JSON structure (only cipher, no plaintext next_hop)
@@ -753,43 +787,58 @@ MATRYOSHKA_API int matryoshka_build_circuit_json_c(
     }
 
     std::string dir_url = directory_url ? std::string(directory_url) : "http://localhost:5600";
-    std::vector<unsigned char> payload_vec(payload, payload + payload_len);
+    std::vector<unsigned char> payload_vec;
+    // Debug: print incoming parameters to help diagnose crashes (avoid printing payload contents)
+    std::cerr << "matryoshka_build_circuit_json_c: hop_count=" << hop_count << " payload_len=" << payload_len
+              << " dest=" << (final_destination ? final_destination : "(null)")
+              << " dir=" << dir_url << "\n";
+    try {
+        payload_vec.assign(payload, payload + payload_len);
 
-    Matryoshka::Circuit cpp_circuit = Matryoshka::build_circuit(
-        hop_count,
-        payload_vec,
-        std::string(final_destination),
-        dir_url);
+        // Build circuit with defensive exception handling
+        Matryoshka::Circuit cpp_circuit = Matryoshka::build_circuit(
+            hop_count,
+            payload_vec,
+            std::string(final_destination),
+            dir_url);
 
-    if (cpp_circuit.first_relay_ip.empty()) {
+        if (cpp_circuit.first_relay_ip.empty()) {
+            return -2;
+        }
+
+        // Continue to JSON export below (move j-building into this scope)
+
+        json j;
+        j["encrypted_payload_b64"] = to_base64(cpp_circuit.encrypted_payload);
+        j["first_relay_ip"] = cpp_circuit.first_relay_ip;
+        j["first_relay_port"] = cpp_circuit.first_relay_port;
+        j["hop_count"] = cpp_circuit.hop_count;
+
+        // Export response keys (base64-encoded) so higher-level clients can decrypt responses
+        json response_keys_json = json::array();
+        for (const auto& rk : cpp_circuit.response_keys) {
+            json k;
+            std::vector<unsigned char> key_vec(rk.key, rk.key + sizeof(rk.key));
+            std::vector<unsigned char> iv_vec(rk.iv, rk.iv + sizeof(rk.iv));
+            k["key_b64"] = to_base64(key_vec);
+            k["iv_b64"] = to_base64(iv_vec);
+            response_keys_json.push_back(k);
+        }
+        j["response_keys"] = response_keys_json;
+
+        std::string out = j.dump();
+        *json_out = dup_cstr(out);
+        if (!*json_out) {
+            return -3;
+        }
+
+        return 0;
+
+    } catch (const std::exception& e) {
+        std::cerr << "Exception in matryoshka_build_circuit_json_c: " << e.what() << "\n";
         return -2;
     }
 
-    json j;
-    j["encrypted_payload_b64"] = to_base64(cpp_circuit.encrypted_payload);
-    j["first_relay_ip"] = cpp_circuit.first_relay_ip;
-    j["first_relay_port"] = cpp_circuit.first_relay_port;
-    j["hop_count"] = cpp_circuit.hop_count;
-
-    // Export response keys (base64-encoded) so higher-level clients can decrypt responses
-    json response_keys_json = json::array();
-    for (const auto& rk : cpp_circuit.response_keys) {
-        json k;
-        std::vector<unsigned char> key_vec(rk.key, rk.key + sizeof(rk.key));
-        std::vector<unsigned char> iv_vec(rk.iv, rk.iv + sizeof(rk.iv));
-        k["key_b64"] = to_base64(key_vec);
-        k["iv_b64"] = to_base64(iv_vec);
-        response_keys_json.push_back(k);
-    }
-    j["response_keys"] = response_keys_json;
-
-    std::string out = j.dump();
-    *json_out = dup_cstr(out);
-    if (!*json_out) {
-        return -3;
-    }
-
-    return 0;
 }
 
 MATRYOSHKA_API int matryoshka_send_through_circuit_json_c(
