@@ -52,8 +52,11 @@ except ImportError:
 ALLOW_MOCK_FALLBACK = True
 
 # 1: her zaman C++/REAL dene, başarısızsa hata ver
-# 0: C++/REAL dene, olmazsa mock'a düş
+# 0: C++/REAL dene, olmazsa mock'a düş (mock fallback is disabled by default)
 FORCE_REAL = os.environ.get("MATRYOSHKA_FORCE_REAL", "0") == "1"
+
+# By default do NOT fall back to MOCK relays. Set `ALLOW_MOCK_FALLBACK=1` to re-enable mock mode.
+ALLOW_MOCK_FALLBACK = os.environ.get("ALLOW_MOCK_FALLBACK", "0") == "1"
 
 class Circuit:
     """Represents a multi-hop circuit through relay nodes.
@@ -167,7 +170,37 @@ def _load_matryoshka_lib() -> Optional[ctypes.CDLL]:
         except Exception:
             pass
 
-    lib = ctypes.CDLL(dll_abs)
+    # Diagnostic: attempt to load and if it fails, print helpful info
+    try:
+        lib = ctypes.CDLL(dll_abs)
+    except Exception as e:
+        # Provide extra context to help debug load failures on servers
+        try:
+            import platform, traceback
+            print(f"[DLL Diagnostic] Trying to load: {dll_abs}")
+            print(f"[DLL Diagnostic] exists: {os.path.exists(dll_abs)}")
+            print(f"[DLL Diagnostic] platform: {platform.system()} {platform.release()} ({platform.machine()})")
+            print(f"[DLL Diagnostic] python arch: {platform.architecture()}")
+            # Show the directory and PATH snippets
+            dll_dir = os.path.dirname(dll_abs)
+            print(f"[DLL Diagnostic] dll_dir: {dll_dir}")
+            print(f"[DLL Diagnostic] PATH contains dll_dir: {dll_dir in os.environ.get('PATH','')}")
+            print(f"[DLL Diagnostic] PATH (start): {os.environ.get('PATH','')[:400]}")
+            print(f"[DLL Diagnostic] ctypes.CDLL raised: {e}")
+            tb = traceback.format_exc()
+            print(f"[DLL Diagnostic] traceback:\n{tb}")
+
+            # Try loading via WinDLL as an alternate test
+            try:
+                import ctypes as _ct
+                _ct.WinDLL(dll_abs)
+                print("[DLL Diagnostic] WinDLL succeeded")
+            except Exception as e2:
+                print(f"[DLL Diagnostic] WinDLL failed: {e2}")
+        except Exception:
+            pass
+        # Re-raise original exception so upstream behavior doesn't change
+        raise
 
 
     # int matryoshka_build_circuit_json_c(int hop_count, const uint8_t* payload, int payload_len,
@@ -361,6 +394,65 @@ def send_through_circuit(circuit: Circuit, message: str, destination: str) -> Op
         time.sleep(0.3)
 
     return f"Message received by {destination} (Securely Delivered)"
+
+
+def send_through_circuit_bytes(circuit: Circuit, message_bytes: bytes, destination: str) -> bytes:
+    """Send raw bytes through the circuit and return raw bytes response.
+
+    Returns raw response bytes (useful for HTTP proxying or binary downloads).
+    """
+    if not circuit:
+        raise ValueError("Invalid circuit")
+
+    directory_base_url = os.environ.get("MATRYOSHKA_DIRECTORY_URL", "http://localhost:5000")
+
+    try:
+        if _find_default_dll():
+            # We reuse the C++ build by passing a UTF-8 string representation of the bytes.
+            # This is not ideal, but works for text-based protocols like HTTP.
+            real_circuit = _build_circuit_cpp(len(circuit), message_bytes.decode('utf-8', errors='replace'), destination, directory_base_url)
+
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock.settimeout(10)
+            try:
+                sock.connect((real_circuit.entry_ip, real_circuit.entry_port))
+                sock.sendall(real_circuit.encrypted_payload)
+                try:
+                    sock.shutdown(socket.SHUT_WR)
+                except Exception:
+                    pass
+
+                resp = b""
+                while True:
+                    chunk = sock.recv(4096)
+                    if not chunk:
+                        break
+                    resp += chunk
+
+                if resp and real_circuit.response_keys:
+                    try:
+                        resp = _decrypt_response_layers(resp, real_circuit.response_keys)
+                    except Exception:
+                        pass
+
+                return resp
+            finally:
+                sock.close()
+
+        if FORCE_REAL:
+            raise RuntimeError("FORCE_REAL enabled but matryoshka.dll unavailable")
+
+    except Exception as e:
+        if FORCE_REAL:
+            raise
+        if not ALLOW_MOCK_FALLBACK:
+            raise
+        print(f"[Core Warning] REAL send failed ({e}). Falling back to MOCK.")
+
+    # MOCK fallback: return a simple HTTP-like response bytes for convenience
+    body = b"Message received by %b (Securely Delivered)" % destination.encode('utf-8')
+    resp = b"HTTP/1.1 200 OK\r\nContent-Type: text/plain; charset=utf-8\r\nContent-Length: " + str(len(body)).encode('ascii') + b"\r\n\r\n" + body
+    return resp
 
 
 def _decrypt_response_layers(encrypted_response: bytes, response_keys: List[Tuple[bytes, bytes]]) -> bytes:

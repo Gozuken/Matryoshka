@@ -30,13 +30,22 @@ except ImportError:
         raise NotImplementedError("decrypt_layer fonksiyonu henüz implement edilmedi")
 
 # Logging yapılandırması
+# Ensure stdout/stderr use UTF-8 so non-ASCII log messages work on Windows consoles
+try:
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8")
+    if hasattr(sys.stderr, "reconfigure"):
+        sys.stderr.reconfigure(encoding="utf-8")
+except Exception:
+    pass
+
+# Configure logging: write log file in UTF-8 and stream to stdout
+file_handler = logging.FileHandler('relay_node.log', encoding='utf-8')
+stream_handler = logging.StreamHandler(sys.stdout)
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler('relay_node.log'),
-        logging.StreamHandler(sys.stdout)
-    ]
+    handlers=[file_handler, stream_handler],
 )
 logger = logging.getLogger(__name__)
 

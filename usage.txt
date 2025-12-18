@@ -1,0 +1,20 @@
+Directory sunucusu oluştur (bind 0.0.0.0:5000)
+
+$env:PORT=5000
+node directory_server.js
+
+#############################################
+5 adet relay oluştur
+
+$baseId = 1
+$basePort = 8001
+$ip = "194.146.36.166"
+$dir = "http://194.146.36.166:5000"
+
+for ($i = 0; $i -lt 5; $i++) {
+    $id = "relay_" + ($baseId + $i)
+    $port = $basePort + $i
+
+    Start-Process python `
+        -ArgumentList "relay_node.py --id $id --port $port --ip $ip --directory $dir"
+}

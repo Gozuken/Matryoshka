@@ -99,7 +99,7 @@ ModuleNotFoundError: No module named 'requests'
 **Çözüm:** `pip install requests` veya `pip install -r requirements.txt` çalıştırın.
 
 ### Directory Server Hatası
-Mock fallback modu aktif olduğu için directory sunucusu olmasa bile proje çalışmalı. Eğer hata alıyorsanız `core/circuit_builder.py` dosyasında `ALLOW_MOCK_FALLBACK = True` olduğundan emin olun.
+Mock fallback modu devre dışı bırakıldı; directory sunucusu yoksa proje hata verecektir. Eğer offline test için mock fallback yeniden etkinleştirmek isterseniz, `ALLOW_MOCK_FALLBACK=1` ortam değişkenini ayarlayabilirsiniz.
 
 ## Proje Yapısı
 

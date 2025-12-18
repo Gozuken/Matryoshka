@@ -376,6 +376,13 @@ def main():
         type=str,
         help='Host header to use with --http-get (default: destination IP)'
     )
+
+    parser.add_argument(
+        '--http-save',
+        type=str,
+        default=None,
+        help='If provided, save HTTP response body to this file (server-side use)'
+    )
     
     parser.add_argument(
         '--dest', '-d',
@@ -388,6 +395,10 @@ def main():
         action='store_true',
         help='Enable verbose output'
     )
+    parser.add_argument(
+        '--no-open',
+        action='store_true',
+        help="Do not open HTML responses in a browser (useful for servers/gateways)")
     
     args = parser.parse_args()
 
@@ -420,29 +431,48 @@ def main():
         if response:
             resp_strip = response.lstrip()
             body_to_open = None
+            body_to_save = None
             if resp_strip.startswith("HTTP/"):
                 try:
                     header, body = resp_strip.split("\r\n\r\n", 1)
                     # Check Content-Type header for HTML
                     if "content-type" in header.lower() and "html" in header.lower():
                         body_to_open = body
+                    # If --http-save requested, save the body
+                    if args.http_save:
+                        body_to_save = body
                 except ValueError:
                     pass
             elif "<html" in response.lower() or response.lstrip().startswith("<"):
                 body_to_open = response
+                if args.http_save:
+                    body_to_save = response
 
             if body_to_open is not None:
-                try:
-                    import tempfile, webbrowser
+                if not args.no_open:
+                    try:
+                        import tempfile, webbrowser
 
-                    t = tempfile.NamedTemporaryFile(delete=False, suffix=".html", mode="w", encoding="utf-8")
-                    t.write(body_to_open)
-                    t.flush()
-                    t.close()
-                    print_info(f"Opening HTML response in browser: {t.name}", verbose=args.verbose)
-                    webbrowser.open("file://" + t.name)
-                except Exception:
-                    print_error("Failed to open HTML response in browser")
+                        t = tempfile.NamedTemporaryFile(delete=False, suffix=".html", mode="w", encoding="utf-8")
+                        t.write(body_to_open)
+                        t.flush()
+                        t.close()
+                        print_info(f"Opening HTML response in browser: {t.name}", verbose=args.verbose)
+                        webbrowser.open("file://" + t.name)
+                    except Exception:
+                        print_error("Failed to open HTML response in browser")
+                else:
+                    # Print a short message indicating HTML was received
+                    print_info("HTML response received (not opening browser due to --no-open).", verbose=True)
+
+            if args.http_save and body_to_save is not None:
+                try:
+                    path = args.http_save
+                    with open(path, 'wb') as f:
+                        f.write(body_to_save.encode('utf-8'))
+                    print_success(f"Saved HTTP response body to {path}")
+                except Exception as e:
+                    print_error(f"Failed to save HTTP response: {e}")
 
         sys.exit(0 if success else 1)
 

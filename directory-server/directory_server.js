@@ -212,7 +212,7 @@ setInterval(() => {
   const now = Date.now();
 
   for (const [id, relay] of Object.entries(relays)) {
-    if (now - relay.last_seen > 5 * 60 * 1000) {
+    if (now - relay.last_seen > 10 * 60 * 1000) {
       console.log(`[CLEANUP] Removing inactive relay: ${id}`);
       delete relays[id];
       saveRelaysToFile();
