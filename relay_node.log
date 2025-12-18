@@ -848,3 +848,139 @@
 2025-12-18 12:54:48,756 - __main__ - INFO - Directory server'a başarıyla kayıt olundu
 2025-12-18 12:54:48,758 - __main__ - INFO - Relay node başlatıldı: relay_18 - Port: 8018
 2025-12-18 12:54:48,759 - __main__ - INFO - Bağlantılar dinleniyor...
+2025-12-18 13:00:48,922 - __main__ - INFO - Yeni RSA anahtar çifti oluşturuluyor...
+2025-12-18 13:00:48,960 - __main__ - INFO - Yeni RSA anahtar çifti oluşturuluyor...
+2025-12-18 13:00:49,047 - __main__ - INFO - Yeni RSA anahtar çifti oluşturuluyor...
+2025-12-18 13:00:49,064 - __main__ - INFO - Directory server'a kayıt olunuyor: http://194.146.36.166:5000/register
+2025-12-18 13:00:49,136 - __main__ - INFO - Directory server'a kayıt olunuyor: http://194.146.36.166:5000/register
+2025-12-18 13:00:49,205 - __main__ - INFO - Directory server'a kayıt olunuyor: http://194.146.36.166:5000/register
+2025-12-18 13:00:49,564 - __main__ - INFO - Directory server'a başarıyla kayıt olundu
+2025-12-18 13:00:49,566 - __main__ - INFO - Relay node başlatıldı: relay_8 - Port: 8008
+2025-12-18 13:00:49,567 - __main__ - INFO - Bağlantılar dinleniyor...
+2025-12-18 13:00:50,323 - __main__ - INFO - Yeni RSA anahtar çifti oluşturuluyor...
+2025-12-18 13:00:50,338 - __main__ - INFO - Yeni RSA anahtar çifti oluşturuluyor...
+2025-12-18 13:00:50,376 - __main__ - INFO - Directory server'a kayıt olunuyor: http://194.146.36.166:5000/register
+2025-12-18 13:00:50,414 - __main__ - INFO - Directory server'a kayıt olunuyor: http://194.146.36.166:5000/register
+2025-12-18 13:00:50,796 - __main__ - INFO - Yeni RSA anahtar çifti oluşturuluyor...
+2025-12-18 13:00:50,936 - __main__ - INFO - Directory server'a kayıt olunuyor: http://194.146.36.166:5000/register
+2025-12-18 13:00:51,158 - __main__ - INFO - Yeni RSA anahtar çifti oluşturuluyor...
+2025-12-18 13:00:51,234 - __main__ - INFO - Yeni RSA anahtar çifti oluşturuluyor...
+2025-12-18 13:00:51,364 - __main__ - INFO - Directory server'a kayıt olunuyor: http://194.146.36.166:5000/register
+2025-12-18 13:00:51,425 - __main__ - INFO - Yeni RSA anahtar çifti oluşturuluyor...
+2025-12-18 13:00:51,548 - __main__ - INFO - Directory server'a başarıyla kayıt olundu
+2025-12-18 13:00:51,550 - __main__ - INFO - Relay node başlatıldı: relay_1 - Port: 8001
+2025-12-18 13:00:51,550 - __main__ - INFO - Bağlantılar dinleniyor...
+2025-12-18 13:00:51,585 - __main__ - INFO - Directory server'a kayıt olunuyor: http://194.146.36.166:5000/register
+2025-12-18 13:00:51,614 - __main__ - INFO - Directory server'a kayıt olunuyor: http://194.146.36.166:5000/register
+2025-12-18 13:00:51,698 - __main__ - INFO - Directory server'a başarıyla kayıt olundu
+2025-12-18 13:00:51,700 - __main__ - INFO - Relay node başlatıldı: relay_3 - Port: 8003
+2025-12-18 13:00:51,700 - __main__ - INFO - Bağlantılar dinleniyor...
+2025-12-18 13:00:52,025 - __main__ - INFO - Yeni RSA anahtar çifti oluşturuluyor...
+2025-12-18 13:00:52,144 - __main__ - INFO - Yeni RSA anahtar çifti oluşturuluyor...
+2025-12-18 13:00:52,239 - __main__ - INFO - Directory server'a kayıt olunuyor: http://194.146.36.166:5000/register
+2025-12-18 13:00:52,384 - __main__ - INFO - Directory server'a kayıt olunuyor: http://194.146.36.166:5000/register
+2025-12-18 13:00:52,425 - __main__ - INFO - Directory server'a başarıyla kayıt olundu
+2025-12-18 13:00:52,427 - __main__ - INFO - Relay node başlatıldı: relay_11 - Port: 8011
+2025-12-18 13:00:52,428 - __main__ - INFO - Bağlantılar dinleniyor...
+2025-12-18 13:00:52,806 - __main__ - INFO - Yeni RSA anahtar çifti oluşturuluyor...
+2025-12-18 13:00:52,853 - __main__ - INFO - Directory server'a başarıyla kayıt olundu
+2025-12-18 13:00:52,854 - __main__ - INFO - Relay node başlatıldı: relay_2 - Port: 8002
+2025-12-18 13:00:52,855 - __main__ - INFO - Bağlantılar dinleniyor...
+2025-12-18 13:00:52,880 - __main__ - INFO - Directory server'a kayıt olunuyor: http://194.146.36.166:5000/register
+2025-12-18 13:00:53,434 - __main__ - INFO - Yeni RSA anahtar çifti oluşturuluyor...
+2025-12-18 13:00:53,556 - __main__ - INFO - Directory server'a kayıt olunuyor: http://194.146.36.166:5000/register
+2025-12-18 13:00:53,873 - __main__ - INFO - Directory server'a başarıyla kayıt olundu
+2025-12-18 13:00:53,876 - __main__ - INFO - Relay node başlatıldı: relay_7 - Port: 8007
+2025-12-18 13:00:53,876 - __main__ - INFO - Bağlantılar dinleniyor...
+2025-12-18 13:00:53,945 - __main__ - INFO - Yeni RSA anahtar çifti oluşturuluyor...
+2025-12-18 13:00:54,069 - __main__ - INFO - Yeni RSA anahtar çifti oluşturuluyor...
+2025-12-18 13:00:54,302 - __main__ - INFO - Yeni RSA anahtar çifti oluşturuluyor...
+2025-12-18 13:00:54,422 - __main__ - INFO - Directory server'a kayıt olunuyor: http://194.146.36.166:5000/register
+2025-12-18 13:00:54,503 - __main__ - INFO - Directory server'a kayıt olunuyor: http://194.146.36.166:5000/register
+2025-12-18 13:00:54,563 - __main__ - INFO - Directory server'a kayıt olunuyor: http://194.146.36.166:5000/register
+2025-12-18 13:00:54,626 - __main__ - INFO - Yeni RSA anahtar çifti oluşturuluyor...
+2025-12-18 13:00:54,699 - __main__ - INFO - Directory server'a kayıt olunuyor: http://194.146.36.166:5000/register
+2025-12-18 13:00:54,823 - __main__ - INFO - Yeni RSA anahtar çifti oluşturuluyor...
+2025-12-18 13:00:54,948 - __main__ - INFO - Directory server'a kayıt olunuyor: http://194.146.36.166:5000/register
+2025-12-18 13:00:54,973 - __main__ - INFO - Directory server'a başarıyla kayıt olundu
+2025-12-18 13:00:54,981 - __main__ - INFO - Relay node başlatıldı: relay_4 - Port: 8004
+2025-12-18 13:00:54,982 - __main__ - INFO - Bağlantılar dinleniyor...
+2025-12-18 13:00:54,850 - __main__ - INFO - Yeni RSA anahtar çifti oluşturuluyor...
+2025-12-18 13:00:54,994 - __main__ - INFO - Directory server'a başarıyla kayıt olundu
+2025-12-18 13:00:54,996 - __main__ - INFO - Relay node başlatıldı: relay_5 - Port: 8005
+2025-12-18 13:00:54,997 - __main__ - INFO - Bağlantılar dinleniyor...
+2025-12-18 13:00:55,004 - __main__ - INFO - Directory server'a başarıyla kayıt olundu
+2025-12-18 13:00:55,009 - __main__ - INFO - Relay node başlatıldı: relay_6 - Port: 8006
+2025-12-18 13:00:55,010 - __main__ - INFO - Bağlantılar dinleniyor...
+2025-12-18 13:00:55,101 - __main__ - INFO - Yeni RSA anahtar çifti oluşturuluyor...
+2025-12-18 13:00:55,106 - __main__ - INFO - Directory server'a kayıt olunuyor: http://194.146.36.166:5000/register
+2025-12-18 13:00:55,149 - __main__ - INFO - Directory server'a başarıyla kayıt olundu
+2025-12-18 13:00:55,151 - __main__ - INFO - Relay node başlatıldı: relay_10 - Port: 8010
+2025-12-18 13:00:55,152 - __main__ - INFO - Bağlantılar dinleniyor...
+2025-12-18 13:00:55,189 - __main__ - INFO - Directory server'a başarıyla kayıt olundu
+2025-12-18 13:00:55,190 - __main__ - INFO - Relay node başlatıldı: relay_9 - Port: 8009
+2025-12-18 13:00:55,192 - __main__ - INFO - Bağlantılar dinleniyor...
+2025-12-18 13:00:55,202 - __main__ - INFO - Directory server'a başarıyla kayıt olundu
+2025-12-18 13:00:55,204 - __main__ - INFO - Relay node başlatıldı: relay_13 - Port: 8013
+2025-12-18 13:00:55,205 - __main__ - INFO - Bağlantılar dinleniyor...
+2025-12-18 13:00:55,218 - __main__ - INFO - Directory server'a başarıyla kayıt olundu
+2025-12-18 13:00:55,220 - __main__ - INFO - Relay node başlatıldı: relay_12 - Port: 8012
+2025-12-18 13:00:55,220 - __main__ - INFO - Bağlantılar dinleniyor...
+2025-12-18 13:00:55,235 - __main__ - INFO - Directory server'a başarıyla kayıt olundu
+2025-12-18 13:00:55,237 - __main__ - INFO - Relay node başlatıldı: relay_19 - Port: 8019
+2025-12-18 13:00:55,237 - __main__ - INFO - Bağlantılar dinleniyor...
+2025-12-18 13:00:55,243 - __main__ - INFO - Directory server'a başarıyla kayıt olundu
+2025-12-18 13:00:55,243 - __main__ - INFO - Directory server'a kayıt olunuyor: http://194.146.36.166:5000/register
+2025-12-18 13:00:55,244 - __main__ - INFO - Relay node başlatıldı: relay_14 - Port: 8014
+2025-12-18 13:00:55,245 - __main__ - INFO - Bağlantılar dinleniyor...
+2025-12-18 13:00:55,249 - __main__ - INFO - Directory server'a başarıyla kayıt olundu
+2025-12-18 13:00:55,250 - __main__ - INFO - Relay node başlatıldı: relay_18 - Port: 8018
+2025-12-18 13:00:55,251 - __main__ - INFO - Bağlantılar dinleniyor...
+2025-12-18 13:00:55,263 - __main__ - INFO - Directory server'a başarıyla kayıt olundu
+2025-12-18 13:00:55,269 - __main__ - INFO - Relay node başlatıldı: relay_15 - Port: 8015
+2025-12-18 13:00:55,270 - __main__ - INFO - Bağlantılar dinleniyor...
+2025-12-18 13:00:55,277 - __main__ - INFO - Directory server'a başarıyla kayıt olundu
+2025-12-18 13:00:55,280 - __main__ - INFO - Relay node başlatıldı: relay_17 - Port: 8017
+2025-12-18 13:00:55,281 - __main__ - INFO - Bağlantılar dinleniyor...
+2025-12-18 13:00:55,295 - __main__ - INFO - Directory server'a başarıyla kayıt olundu
+2025-12-18 13:00:55,297 - __main__ - INFO - Relay node başlatıldı: relay_16 - Port: 8016
+2025-12-18 13:00:55,297 - __main__ - INFO - Bağlantılar dinleniyor...
+2025-12-18 13:00:55,309 - __main__ - INFO - Directory server'a başarıyla kayıt olundu
+2025-12-18 13:00:55,311 - __main__ - INFO - Relay node başlatıldı: relay_20 - Port: 8020
+2025-12-18 13:00:55,314 - __main__ - INFO - Bağlantılar dinleniyor...
+2025-12-18 13:07:13,932 - __main__ - INFO - Yeni bağlantı: 46.221.20.22:57733
+2025-12-18 13:07:13,945 - __main__ - INFO - Paket alındı: 3410 byte
+2025-12-18 13:07:14,101 - __main__ - INFO - Şifre çözüldü, bir sonraki hop: 194.146.36.166:8009
+2025-12-18 13:07:14,104 - __main__ - INFO - Paket iletililiyor: 194.146.36.166:8009
+2025-12-18 13:07:14,106 - __main__ - INFO - Yeni bağlantı: 194.146.36.166:52060
+2025-12-18 13:07:14,108 - __main__ - INFO - Paket alındı: 1938 byte
+2025-12-18 13:07:14,145 - __main__ - INFO - Şifre çözüldü, bir sonraki hop: 194.146.36.166:8012
+2025-12-18 13:07:14,146 - __main__ - INFO - Paket iletililiyor: 194.146.36.166:8012
+2025-12-18 13:07:14,148 - __main__ - INFO - Yeni bağlantı: 194.146.36.166:52061
+2025-12-18 13:07:14,149 - __main__ - INFO - Paket alındı: 830 byte
+2025-12-18 13:07:14,177 - __main__ - INFO - Şifre çözüldü, bir sonraki hop: 194.146.36.166:9000
+2025-12-18 13:07:14,178 - __main__ - INFO - Paket iletililiyor: 194.146.36.166:9000
+2025-12-18 13:07:14,186 - __main__ - INFO - Paket başarıyla iletildi: 194.146.36.166:9000
+2025-12-18 13:07:14,188 - __main__ - INFO - Bağlantı kapatıldı: 194.146.36.166:52061
+2025-12-18 13:07:14,188 - __main__ - INFO - Paket başarıyla iletildi: 194.146.36.166:8012
+2025-12-18 13:07:14,189 - __main__ - INFO - Bağlantı kapatıldı: 194.146.36.166:52060
+2025-12-18 13:07:14,189 - __main__ - INFO - Paket başarıyla iletildi: 194.146.36.166:8009
+2025-12-18 13:07:14,190 - __main__ - INFO - Bağlantı kapatıldı: 46.221.20.22:57733
+2025-12-18 13:07:41,398 - __main__ - INFO - Yeni bağlantı: 46.221.20.22:50670
+2025-12-18 13:07:41,421 - __main__ - INFO - Paket alındı: 3538 byte
+2025-12-18 13:07:41,461 - __main__ - INFO - Şifre çözüldü, bir sonraki hop: 194.146.36.166:8010
+2025-12-18 13:07:41,462 - __main__ - INFO - Paket iletililiyor: 194.146.36.166:8010
+2025-12-18 13:07:41,464 - __main__ - INFO - Yeni bağlantı: 194.146.36.166:52063
+2025-12-18 13:07:41,465 - __main__ - INFO - Paket alındı: 2022 byte
+2025-12-18 13:07:41,500 - __main__ - INFO - Şifre çözüldü, bir sonraki hop: 194.146.36.166:8011
+2025-12-18 13:07:41,502 - __main__ - INFO - Paket iletililiyor: 194.146.36.166:8011
+2025-12-18 13:07:41,504 - __main__ - INFO - Yeni bağlantı: 194.146.36.166:52064
+2025-12-18 13:07:41,504 - __main__ - INFO - Paket alındı: 894 byte
+2025-12-18 13:07:41,516 - __main__ - INFO - Şifre çözüldü, bir sonraki hop: 194.146.36.166:9000
+2025-12-18 13:07:41,517 - __main__ - INFO - Paket iletililiyor: 194.146.36.166:9000
+2025-12-18 13:07:41,519 - __main__ - INFO - Paket başarıyla iletildi: 194.146.36.166:9000
+2025-12-18 13:07:41,521 - __main__ - INFO - Bağlantı kapatıldı: 194.146.36.166:52064
+2025-12-18 13:07:41,521 - __main__ - INFO - Paket başarıyla iletildi: 194.146.36.166:8011
+2025-12-18 13:07:41,522 - __main__ - INFO - Bağlantı kapatıldı: 194.146.36.166:52063
+2025-12-18 13:07:41,522 - __main__ - INFO - Paket başarıyla iletildi: 194.146.36.166:8010
+2025-12-18 13:07:41,523 - __main__ - INFO - Bağlantı kapatıldı: 46.221.20.22:50670
