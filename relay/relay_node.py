@@ -18,6 +18,11 @@ from cryptography.hazmat.primitives.asymmetric import rsa, padding
 from cryptography.hazmat.primitives import serialization, hashes
 from cryptography.hazmat.backends import default_backend
 
+# AES helpers
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+import hashlib
+import os
+
 # Core modülünden decrypt_layer fonksiyonunu import et
 try:
     from core.crypto import decrypt_layer
@@ -266,7 +271,23 @@ class RelayNode:
             logger.error(f"İletim hatası: {e}")
             self.stats['errors'] += 1
             return None
-    
+
+    def encrypt_response_aes(self, response: bytes, key: bytes) -> bytes:
+        """Encrypt response with AES-256-CBC and prepend IV.
+
+        Uses PKCS7 padding and a fresh random IV. Returns iv+ciphertext.
+        """
+        # PKCS7 padding
+        block_size = 16
+        padding_len = block_size - (len(response) % block_size)
+        padded = response + bytes([padding_len]) * padding_len
+
+        iv = os.urandom(16)
+        cipher = Cipher(algorithms.AES(key), modes.CBC(iv), backend=default_backend())
+        encryptor = cipher.encryptor()
+        ct = encryptor.update(padded) + encryptor.finalize()
+        return iv + ct
+
     def handle_connection(self, connection: socket.socket, address: Tuple[str, int]):
         """Gelen bağlantıyı işler ve paketi işler"""
         logger.info(f"Yeni bağlantı: {address[0]}:{address[1]}")
@@ -291,7 +312,8 @@ class RelayNode:
             
             # Bir katman şifresini çöz
             try:
-                next_hop, remaining_data = decrypt_layer(received_data, self.private_key)
+                # Note: decrypt_layer now returns (next_hop, remaining_data, response_key, response_iv)
+                next_hop, remaining_data, response_key, response_iv = decrypt_layer(received_data, self.private_key)
                 logger.info(f"Şifre çözüldü, bir sonraki hop: {next_hop}")
             except NotImplementedError:
                 logger.error("decrypt_layer fonksiyonu henüz implement edilmedi")
@@ -308,12 +330,26 @@ class RelayNode:
                 logger.error(f"Paket iletilemedi: {next_hop}")
                 return
 
-            # Response varsa upstream'e geri gönder
+            # Response varsa upstream'e geri gönder (encrypt if we have response_key)
             if response:
                 try:
-                    connection.sendall(response)
+                    if response_key:
+                        try:
+                            # Optional debug: check if response seems plaintext
+                            decoded = response.decode('utf-8', errors='ignore')
+                            if any(word in decoded.lower() for word in ['secret', 'response', 'message']):
+                                logger.debug(f"Response appears to be plaintext: {decoded[:50]}")
+                        except Exception:
+                            pass
+
+                        encrypted_response = self.encrypt_response_aes(response, response_key)
+                        logger.info(f"Response encrypted: {len(response)} → {len(encrypted_response)} bytes")
+                        connection.sendall(encrypted_response)
+                    else:
+                        # No response key found, send plaintext (backwards compatible)
+                        connection.sendall(response)
                 except Exception as e:
-                    logger.error(f"Response upstream'e gönderilemedi: {e}")
+                    logger.error(f"Response encryption/send failed: {e}")
                     self.stats['errors'] += 1
             
         except socket.timeout:

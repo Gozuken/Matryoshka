@@ -104,9 +104,9 @@ def test_crypto_fallback():
         )
         
         # decrypt_layer'ı çağır (fallback mod kullanılacak)
-        next_hop, remaining_data = decrypt_layer(test_data, private_key)
+        next_hop, remaining_data, response_key, response_iv = decrypt_layer(test_data, private_key)
         
-        if next_hop == "127.0.0.1:8001" and remaining_data == b"TestPayload":
+        if next_hop == "127.0.0.1:8001" and remaining_data == b"TestPayload" and response_key is None:
             print("✅ Fallback mod testi başarılı")
             print(f"   Next hop: {next_hop}")
             print(f"   Remaining data: {remaining_data}")
@@ -114,7 +114,7 @@ def test_crypto_fallback():
         else:
             print(f"❌ Fallback mod testi başarısız")
             print(f"   Beklenen: ('127.0.0.1:8001', b'TestPayload')")
-            print(f"   Alınan: ({next_hop}, {remaining_data})")
+            print(f"   Alınan: ({next_hop}, {remaining_data}, {response_key})")
             return False
             
     except Exception as e:

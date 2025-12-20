@@ -74,14 +74,15 @@ def test_crypto_fallback():
         
         # decrypt_layer'ı çağır
         print("decrypt_layer() çağrılıyor...")
-        next_hop, remaining_data = decrypt_layer(test_data, private_key)
+        next_hop, remaining_data, response_key, response_iv = decrypt_layer(test_data, private_key)
         
         print(f"✅ Başarılı!")
         print(f"   Next hop: {next_hop}")
         print(f"   Remaining data: {remaining_data}")
+        print(f"   Response key: {response_key}")
         
         # Doğrulama
-        if next_hop == "127.0.0.1:8001" and remaining_data == b"TestPayload123":
+        if next_hop == "127.0.0.1:8001" and remaining_data == b"TestPayload123" and response_key is None:
             print("✅ Sonuçlar doğru!")
             return True
         else:

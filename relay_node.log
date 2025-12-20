@@ -1,0 +1,1 @@
+2025-12-21 01:58:26,445 - core.crypto - WARNING - C++ kütüphanesi kullanýlamadý, test moduna geçiliyor: Parse hatasý - Çözülmüþ veri geçerli JSON deðil (Hata kodu: -4): line 1 column 1 (char 0)
