@@ -195,12 +195,16 @@ def _build_circuit_cpp(num_relays: int, message: str, destination: str, director
     msg_bytes = message.encode("utf-8")
     msg_buf = (ctypes.c_uint8 * len(msg_bytes)).from_buffer_copy(msg_bytes)
 
+    # FIX: Keep encoded destination and directory bytes alive in local variables
+    dest_bytes = destination.encode("utf-8")
+    dir_bytes = directory_base_url.encode("utf-8")
+
     rc = lib.matryoshka_build_circuit_json_c(
         int(num_relays),
         msg_buf,
         int(len(msg_bytes)),
-        destination.encode("utf-8"),
-        directory_base_url.encode("utf-8"),
+        dest_bytes,
+        dir_bytes,
         ctypes.byref(out_ptr),
     )
 
@@ -304,15 +308,34 @@ def send_through_circuit(circuit: Circuit, message: str, destination: str) -> Op
     # If circuit is REAL-shell (built without payload), build now.
     directory_base_url = os.environ.get("MATRYOSHKA_DIRECTORY_URL", "http://localhost:5000")
 
+    # FIX: Accept raw host:port values by ensuring a scheme is present
+    if not directory_base_url.startswith("http://") and not directory_base_url.startswith("https://"):
+        directory_base_url = "http://" + directory_base_url
+
     try:
         if _find_default_dll():
-            real_circuit = _build_circuit_cpp(len(circuit), message, destination, directory_base_url)
+            # Only build the real payload once per Circuit; reuse if already present
+            if not circuit.encrypted_payload:
+                real_circuit = _build_circuit_cpp(len(circuit), message, destination, directory_base_url)
+
+                # Copy REAL-mode fields into the Circuit so subsequent sends reuse them
+                circuit.entry_ip = real_circuit.entry_ip
+                circuit.entry_port = real_circuit.entry_port
+                circuit.encrypted_payload = real_circuit.encrypted_payload
+                circuit.hop_count = real_circuit.hop_count
+                circuit.response_keys = real_circuit.response_keys
+                print(f"[Core] Built REAL circuit: entry={circuit.entry_ip}:{circuit.entry_port} hops={circuit.hop_count}")
+            else:
+                print(f"[Core] Reusing existing REAL circuit: entry={circuit.entry_ip}:{circuit.entry_port} hops={circuit.hop_count}")
+
+            if not circuit.entry_ip or not circuit.encrypted_payload:
+                raise RuntimeError("Failed to build real circuit payload")
 
             sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             sock.settimeout(10)
             try:
-                sock.connect((real_circuit.entry_ip, real_circuit.entry_port))
-                sock.sendall(real_circuit.encrypted_payload)
+                sock.connect((circuit.entry_ip, circuit.entry_port))
+                sock.sendall(circuit.encrypted_payload)
                 try:
                     sock.shutdown(socket.SHUT_WR)
                 except Exception:
@@ -328,14 +351,14 @@ def send_through_circuit(circuit: Circuit, message: str, destination: str) -> Op
 
                 # If the response is encrypted in layers, try to decrypt
                 final_bytes = resp
-                if resp and real_circuit.response_keys:
+                if resp and circuit.response_keys:
                     try:
-                        final_bytes = _decrypt_response_layers(resp, real_circuit.response_keys)
+                        final_bytes = _decrypt_response_layers(resp, circuit.response_keys)
                     except Exception as e:
                         print(f"[Core Warning] Response decryption failed: {e}, returning raw response")
 
                 # If it looks like an HTTP response, return the full HTTP response
-                # (headers + body) so callers can choose to render or save it.
+                # (headers + body) so callers can choose to render or save it.)
                 if final_bytes.startswith(b"HTTP/"):
                     return final_bytes.decode("utf-8", errors="replace").strip()
 

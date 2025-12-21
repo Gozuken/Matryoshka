@@ -155,12 +155,16 @@ class MatryoshkaWrapper:
         """
         out_ptr = ctypes.c_char_p()
         
+        # FIX: keep encoded bytes alive in Python to prevent C-level access
+        msg_bytes = message.encode('utf-8')
+        dest_bytes = destination.encode('utf-8')
+        dir_bytes = directory_url.encode('utf-8')
         res = self.lib.matryoshka_build_circuit_json_c(
             hops,
-            message.encode('utf-8'),
-            len(message),
-            destination.encode('utf-8'),
-            directory_url.encode('utf-8'),
+            msg_bytes,
+            len(msg_bytes),
+            dest_bytes,
+            dir_bytes,
             ctypes.byref(out_ptr)
         )
         
@@ -198,9 +202,12 @@ class MatryoshkaWrapper:
         """
         out_ptr = ctypes.c_char_p()
         
+        # FIX: keep encoded bytes alive
+        packet_bytes = packet_str.encode('utf-8')
+        priv_bytes = private_key.encode('utf-8')
         res = self.lib.matryoshka_decrypt_layer_json_c(
-            packet_str.encode('utf-8'),
-            private_key.encode('utf-8'),
+            packet_bytes,
+            priv_bytes,
             ctypes.byref(out_ptr)
         )
         

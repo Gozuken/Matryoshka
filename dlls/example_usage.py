@@ -48,9 +48,14 @@ def generate_keypair_cpp():
 def build_circuit_cpp(hops, msg, dest):
     out_ptr = ctypes.c_char_p()
     # Note: We pass DIRECTORY_URL to your C++ code so it queries the real server!
+    # FIX: keep bytes alive while calling into C++
+    msg_bytes = msg.encode('utf-8')
+    dest_bytes = dest.encode('utf-8')
+    dir_bytes = DIRECTORY_URL.encode('utf-8')
+
     res = lib.matryoshka_build_circuit_json_c(
-        hops, msg.encode('utf-8'), len(msg), 
-        dest.encode('utf-8'), DIRECTORY_URL.encode('utf-8'), 
+        hops, msg_bytes, len(msg_bytes), 
+        dest_bytes, dir_bytes, 
         ctypes.byref(out_ptr)
     )
     if res != 0: raise Exception(f"Circuit build failed (Error {res})")
@@ -60,8 +65,11 @@ def build_circuit_cpp(hops, msg, dest):
 
 def decrypt_layer_cpp(packet_str, priv_key):
     out_ptr = ctypes.c_char_p()
+    # FIX: keep bytes alive
+    packet_bytes = packet_str.encode('utf-8')
+    priv_bytes = priv_key.encode('utf-8')
     res = lib.matryoshka_decrypt_layer_json_c(
-        packet_str.encode('utf-8'), priv_key.encode('utf-8'), 
+        packet_bytes, priv_bytes,
         ctypes.byref(out_ptr)
     )
     if res != 0: raise Exception(f"Decryption failed (Error {res})")

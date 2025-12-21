@@ -10,6 +10,7 @@ import re
 import sys
 import time
 from typing import List, Dict, Optional, Tuple
+import os
 import requests
 from requests.exceptions import RequestException, ConnectionError, Timeout
 
@@ -161,13 +162,14 @@ def display_circuit_info(circuit: object, num_relays: int, verbose: bool = False
         print_info(f"Circuit details: {circuit.__dict__}", verbose=verbose)
 
 
-def build_circuit_with_relays(num_relays: int = 3, verbose: bool = False) -> Optional[object]:
+def build_circuit_with_relays(num_relays: int = 3, verbose: bool = False, directory_url: Optional[str] = None) -> Optional[object]:
     """
     Build a circuit using available relays.
     
     Args:
         num_relays: Number of relays to use in the circuit
         verbose: Enable verbose output
+        directory_url: Optional override for the directory server relays endpoint (e.g. "http://1.2.3.4:5000/relays")
         
     Returns:
         Circuit object or None on error
@@ -175,7 +177,11 @@ def build_circuit_with_relays(num_relays: int = 3, verbose: bool = False) -> Opt
     print("Building circuit...")
     
     try:
-        circuit = build_circuit(num_relays=num_relays)
+        if directory_url:
+            circuit = build_circuit(num_relays=num_relays, directory_url=directory_url)
+        else:
+            circuit = build_circuit(num_relays=num_relays)
+
         print_success(f"Selected {num_relays} relays for circuit")
         print_success("Circuit established")
         
@@ -273,7 +279,7 @@ def send_message(circuit: object, message: str, destination: str, verbose: bool 
         return False, None
 
 
-def interactive_mode(verbose: bool = False):
+def interactive_mode(verbose: bool = False, directory_url: Optional[str] = None):
     """Run the client in interactive loop mode."""
     print_header()
     
@@ -302,7 +308,7 @@ def interactive_mode(verbose: bool = False):
             # Build circuit if not already built
             if circuit is None:
                 print_info("Building circuit...", verbose=verbose)
-                circuit = build_circuit_with_relays(num_relays=3, verbose=verbose)
+                circuit = build_circuit_with_relays(num_relays=3, verbose=verbose, directory_url=directory_url)
                 if circuit is None:
                     print_error("Failed to establish circuit. Please try again.")
                     continue
@@ -388,14 +394,32 @@ def main():
         action='store_true',
         help='Enable verbose output'
     )
-    
+
+    parser.add_argument(
+        '--directory', '-D',
+        type=str,
+        default=None,
+        help='Directory server base URL (e.g. http://1.2.3.4:5000). Overrides MATRYOSHKA_DIRECTORY_URL env var.'
+    )
+
     args = parser.parse_args()
+
+    # Handle directory override (base URL)
+    directory_relays_url = None
+    if args.directory:
+        base = args.directory.rstrip('/')
+        # Ensure URL has scheme (accept raw host:port inputs)
+        if not base.startswith('http://') and not base.startswith('https://'):
+            base = 'http://' + base
+        os.environ['MATRYOSHKA_DIRECTORY_URL'] = base
+        directory_relays_url = base + '/relays'
+        print_info(f"Using directory server: {base}", verbose=args.verbose)
 
     # Non-interactive mode: raw message
     if args.message and args.dest:
         print_header()
         
-        circuit = build_circuit_with_relays(num_relays=3, verbose=args.verbose)
+        circuit = build_circuit_with_relays(num_relays=3, verbose=args.verbose, directory_url=directory_relays_url)
         if circuit is None:
             sys.exit(1)
         
@@ -410,7 +434,7 @@ def main():
         host = args.http_host or dest_ip
         http_req = _build_http_get_request(args.http_get, host)
 
-        circuit = build_circuit_with_relays(num_relays=3, verbose=args.verbose)
+        circuit = build_circuit_with_relays(num_relays=3, verbose=args.verbose, directory_url=directory_relays_url)
         if circuit is None:
             sys.exit(1)
 
@@ -453,7 +477,7 @@ def main():
         sys.exit(1)
 
     # Default: interactive mode
-    interactive_mode(verbose=args.verbose)
+    interactive_mode(verbose=args.verbose, directory_url=directory_relays_url)
 
 
 if __name__ == "__main__":
@@ -467,14 +491,17 @@ USAGE:
     Interactive mode (default):
         python client.py
         python client.py --verbose
-    
+
+    Specify custom Directory server:
+        python client.py --directory "http://YOUR_VDS_IP:5000" --message "Hello" --dest "10.0.0.99:5600"
+
     Non-interactive mode:
         python client.py --message "Hello World" --dest "192.168.1.1:8080"
         python client.py -m "Hello" -d "10.0.0.1:5000" -v
 
 FEATURES:
     - CLI interface with colored output
-    - Directory server query for relay discovery
+    - Directory server query for relay discovery (use --directory to override)
     - Circuit building with configurable relay count
     - Anonymous message sending through multi-hop circuit
     - Input validation for destinations
